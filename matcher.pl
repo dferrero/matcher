@@ -25,7 +25,14 @@ my $output = 0;
 my $help = 0;
 
 sub help {
-	print "Show help";
+	print "Usage: matcher.pl -l LOGPATH (-re REGEXPATH | -r REGEX) [-O]\n\n";
+	print "-l, --log       Set log file to be checked against regexs\n";
+	print "-re             Set regex file where are stored all regex to test\n\n";
+	print "-h, --help      Displays help message and exit\n";
+	print "-r              Set an unique regex to test against the file instead of use a regex file.\n";
+	print "                Cannot be set at same time -r and -re\n";
+	print "-o, --output    *NOT IMPLEMENTED* Classify all matched lines in files\n";
+	exit;
 }
 
 sub writeToFile {
@@ -122,7 +129,6 @@ die "Only one regex can be set with -r. If you need more than one regex, please 
 
 # Build regex hash
 if ( $check_r == 1 ){
-	print "Usando una regex\n";
 	print "\t@re\n";
 	#TODO
 } 
