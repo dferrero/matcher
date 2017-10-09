@@ -1,14 +1,13 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
-use autodie; # die if problem reading or writing a file
+use autodie;
 
 use Path::Tiny;
 use Getopt::Long;
-use Pod::Usage;
 use Time::HiRes;
 
-my $start_time = Time::HiRes::time(); #Time::HiRes::Value->now();
+my $start_time = Time::HiRes::time(); 
 
 my $logfile = '';
 
@@ -37,6 +36,7 @@ sub help {
 	exit;
 }
 
+=begin File operations aux subroutines
 sub writeToFile {
 	my $dir = path("/tmp"); # /tmp
 
@@ -71,6 +71,7 @@ sub appendToFile {
 	}
 }
 
+
 sub readFromFile {
 	my $dir = path("/tmp"); # /tmp
 
@@ -89,6 +90,7 @@ sub readFromFile {
 	}
 
 }
+=cut
 
 sub readRegexFile {
 	open (my $file, '<:encoding(UTF-8)', $regexfile) or die "Could not open file '$regexfile'";
@@ -131,24 +133,28 @@ GetOptions (
 	't' => \$test,
 	"r=s" => \@re,
 	're|rs=s' => \$regexfile
-	) or pod2usage(2);
-help() if $help; # http://perldoc.perl.org/Pod/Usage.html
+	) or help();
+help() if $help; 
 
+# Checking mandatory params
 die "Cannot be set re and regex file at same time." if ( $check_r and $check_rs);
 die "At least one regex or a regex file must be declared." if (! $check_r and ! $check_rs);
 die "Only one regex can be set with -r. If you need more than one regex, please use -re <regex file>." if ( $check_r > 1 );
 
-# Build regex hash
+# Build regex hash 
+# a) One regex option
 if ( $check_r == 1 ){
 	print "\t@re\n";
 	#TODO
 } 
+# b) File regex option
 if ( $check_rs == 1 ){
 	die "Regex file doesn't exist."  if ! ( -e $regexfile );
 	die "Regex file cannot be read." if ! ( -r $regexfile );
 	readRegexFile();
 	testRegex() if $test;
 }
+
 # Check log path and open it
 die "Log file doesn't exist."  if ! ( -e $logfile );
 die "Log file cannot be read." if ! ( -r $logfile );
@@ -158,6 +164,7 @@ open (my $log, '<:encoding(UTF-8)', $logfile) or die "Could not open log file '$
 # Test all log against regex(s)
 my $elems = (@re);
 my $checking = "";
+prepareFiles();
 while (my $line = <$log>){
 	my $match = 0;
 	my $elem = 0;
@@ -166,11 +173,9 @@ while (my $line = <$log>){
 		$checking = $re[$elem];
 		chomp $checking;
 		if ( $line =~ m/$checking/ ){
-			#print "MATCH\t\t$line\n";
 			$matcher{$checking}++;
 			$match++;
 		} else {
-			#print "NO MATCH\t$line\n";
 			$elem++;
 		}
 	}
@@ -178,6 +183,8 @@ while (my $line = <$log>){
 		push @unmatch, $line;
 	}
 }
+
+#resultsToFiles() if 
 
 # Show stats
 foreach my $key (sort {$matcher{$a} <=> $matcher{$b}} keys %matcher) {

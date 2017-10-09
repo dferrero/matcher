@@ -19,17 +19,20 @@ This list includes all available parameters which can be used with the script. I
 -o, --output	*NOT IMPLEMENTED* Classify all matched lines in files
 ```
 
+Regular expressions stored on regex file must be declared one per line. Comments are supported using `#` and empty lines are ignored.
+
 ## Dependencies
 
 * Path::Tiny
 
 ## Work in progress
 
-- [x] Help message
-- [x] Check if all regex are correct syntactically
+- [x] ~~Help message~~
+- [x] ~~Check if all regex are correct syntactically~~
 - [ ] Test against multiple file logs
 - [ ] Improve performance
 - [ ] Get output on files option
 - [ ] Print few unmatched lines (if they are too many)
 - [ ] Print group matches in JSON format (few ones)
 - [ ] Default regex and log files
+- [ ] Stats with % after execution
