@@ -26,6 +26,8 @@ This list includes all available parameters which can be used with the script. I
 
 * Check if all regex are correct syntactically
 * Test against multiple file logs
-* Help message
 * Improve performance
 * Get output on files option
+* Print few unmatched lines (if they are too many)
+* Print group matches in JSON format (few ones)
+* Default regex and log files
