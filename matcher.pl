@@ -116,6 +116,34 @@ sub testRegex{
 	print "All regex have been checked. Syntax is correct.\n";
 }
 
+sub finalReport{
+	my $hits = 0;
+
+	foreach my $key (keys %matcher) {
+		$hits = $hits + $key;
+	}
+
+	# Test in progress
+	my $total = $hits + $unmatchsize;
+	print "\nMatched log lines: $hits/$total (%)\n";
+
+	foreach my $key (sort {$matcher{$a} <=> $matcher{$b}} keys %matcher) {
+		print "$matcher{$key} hits\t\t$key\n";
+	}
+
+	my $unmatchsize = (@unmatch);
+	print "\nUnmatched lines: $unmatchsize\n";
+	if ( $unmatchsize > 0 ){
+		foreach my $unm (@unmatch){
+			print "\t$unm\n";
+		}
+	}
+
+	my $end_time = Time::HiRes::time();
+	my $run_time = $end_time - $start_time;
+	print "Time used: $run_time";
+}
+
 # Mandatory arg checks
 foreach my $arg ( @ARGV ){
 	if ($arg =~ m/-{1,2}(r)$/){
@@ -184,20 +212,5 @@ while (my $line = <$log>){
 	}
 }
 
-#resultsToFiles() if 
-
-# Show stats
-foreach my $key (sort {$matcher{$a} <=> $matcher{$b}} keys %matcher) {
-    print "$matcher{$key} hits\t\t$key\n";
-}
-my $unmatchsize = (@unmatch);
-print "\nUnmatched lines: $unmatchsize\n";
-if ( $unmatchsize > 0 ){
-	foreach my $unm (@unmatch){
-		print "\t$unm\n";
-	}
-}
-
-my $end_time = Time::HiRes::time(); #Time::HiRes::Value->now();
-my $run_time = $end_time - $start_time;
-print "Time used: $run_time";
+# Show results
+finalReport()
