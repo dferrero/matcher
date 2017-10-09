@@ -21,6 +21,7 @@ my @unmatch = ();
 my $check_r = 0;
 my $check_rs = 0;
 
+my $test = 0;
 my $output = 0;
 my $help = 0;
 
@@ -31,6 +32,7 @@ sub help {
 	print "-h, --help      Displays help message and exit\n";
 	print "-r              Set an unique regex to test against the file instead of use a regex file.\n";
 	print "                Cannot be set at same time -r and -re\n";
+	print "-t              Test regex syntax. If anyone is incorrect, the script dies.\n";
 	print "-o, --output    *NOT IMPLEMENTED* Classify all matched lines in files\n";
 	exit;
 }
@@ -104,6 +106,14 @@ sub readRegexFile {
 	die "Regex file is empty or has all regex commented" if ($total_re eq 0);
 }
 
+sub testRegex{
+	foreach my $testing (@re){
+		my $res = eval { qr/$testing/ };
+		die "Invalid regex syntax on $@" if $@;
+	}
+	print "All regex have been checked. Syntax is correct.\n";
+}
+
 # Mandatory arg checks
 foreach my $arg ( @ARGV ){
 	if ($arg =~ m/-{1,2}(r)$/){
@@ -118,6 +128,7 @@ GetOptions (
 	'help|h|?' => \$help,
 	'l|log=s' => \$logfile,
 	'output|o' => \$output,
+	't' => \$test,
 	"r=s" => \@re,
 	're|rs=s' => \$regexfile
 	) or pod2usage(2);
@@ -136,6 +147,7 @@ if ( $check_rs == 1 ){
 	die "Regex file doesn't exist."  if ! ( -e $regexfile );
 	die "Regex file cannot be read." if ! ( -r $regexfile );
 	readRegexFile();
+	testRegex() if $test;
 }
 # Check log path and open it
 die "Log file doesn't exist."  if ! ( -e $logfile );
@@ -173,9 +185,11 @@ foreach my $key (sort {$matcher{$a} <=> $matcher{$b}} keys %matcher) {
 }
 my $unmatchsize = (@unmatch);
 print "\nUnmatched lines: $unmatchsize\n";
-#foreach my $unm (@unmatch){
-#	print "\t$unm\n";
-#}
+if ( $unmatchsize > 0 ){
+	foreach my $unm (@unmatch){
+		print "\t$unm\n";
+	}
+}
 
 my $end_time = Time::HiRes::time(); #Time::HiRes::Value->now();
 my $run_time = $end_time - $start_time;
