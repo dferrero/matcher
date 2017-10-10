@@ -29,10 +29,11 @@ Regular expressions stored on regex file must be declared one per line. Comments
 
 - [x] ~~Help message~~
 - [x] ~~Check if all regex are correct syntactically~~
+- [x] ~~Better print for regex hits (using one line only)~~
 - [ ] Test against multiple file logs
 - [ ] Improve performance
 - [ ] Get output on files option
-- [ ] Print few unmatched lines (if they are too many)
+- [x] ~~Print few unmatched lines (if they are too many)~~
 - [ ] Print group matches in JSON format (few ones)
 - [ ] Default regex and log files
-- [ ] Stats with % after execution
+- [x] ~~Stats with % after execution~~

@@ -24,6 +24,9 @@ my $test = 0;
 my $output = 0;
 my $help = 0;
 
+# Global variables
+our $unmatchsize = 0;
+
 sub help {
 	print "Usage: matcher.pl -l LOGPATH (-re REGEXPATH | -r REGEX) [-O]\n\n";
 	print "-l, --log       Set log file to be checked against regexs\n";
@@ -117,40 +120,75 @@ sub testRegex{
 }
 
 sub finalReport{
+	# Get window size
+	my ($width, $height) = 0;
+	if ( $^O eq "MSWin32"){ # Windows
+		use Win32::Console;
+		my $CONSOLE = Win32::Console->new();
+		($width, $height) = $CONSOLE->Size();
+	} else { # Linux / MacOS
+		$width = `tput cols`;
+	}
+
+	# Numeric values
 	my $hits = 0;
+	my $maxValue = 0;
 
-	foreach my $key (keys %matcher) {
-		$hits = $hits + $key;
+	foreach my $value (values %matcher) {
+		$hits = $hits + $value;
+		$maxValue = $value if ($value > $maxValue);
 	}
 
-	# Test in progress
+	my $spaceLength = length($maxValue);
+	$unmatchsize = (@unmatch);
+
 	my $total = $hits + $unmatchsize;
-	print "\nMatched log lines: $hits/$total (%)\n";
+	my $percentage = ($hits / $total) * 100;
+	$percentage = sprintf("%0.2f", $percentage);
+	print "Matched log lines: $hits/$total ($percentage%)\n";
+	print "Unmatched lines: $unmatchsize\n" if ($unmatchsize > 0);
 
+	# Stats for all regex
+	print "\n";
 	foreach my $key (sort {$matcher{$a} <=> $matcher{$b}} keys %matcher) {
-		print "$matcher{$key} hits\t\t$key\n";
-	}
-
-	my $unmatchsize = (@unmatch);
-	print "\nUnmatched lines: $unmatchsize\n";
-	if ( $unmatchsize > 0 ){
-		foreach my $unm (@unmatch){
-			print "\t$unm\n";
+		# Setting spaces before numbers
+		my $regexHits = $matcher{$key};
+		my $spaces = $spaceLength - length($regexHits);
+		# Checking length of every line
+		my $spaceLeft = $width - ($spaceLength + 8 + 1);# 8 - " hits | " ; 1 blank space at the end
+		my $regex = $key;
+		if ( length($key) > $spaceLeft ){
+			$regex = substr $key, 0, ($spaceLeft - 5);
+			$regex = $regex . "[...]";
 		}
+		# Print information
+		for my $i (1 .. $spaces){ print " "; }
+		print "$regexHits hits | $regex\n";
 	}
 
+	# Print unmatched lines
+	if ( $unmatchsize > 0 ){
+		print "\n======== Unmatched lines (max 5 displayed) ========\n";
+		if ( $unmatchsize < 6 ){
+			foreach my $unm (@unmatch){ print "$unm\n"; }
+		} else {
+			for my $firsts (1 .. 5) { print "$unmatch[$firsts]\n"; }
+		}
+		print "===================================================\n";		
+	} else { print "\n"; }
+
+	# Time used
 	my $end_time = Time::HiRes::time();
-	my $run_time = $end_time - $start_time;
-	print "Time used: $run_time";
+	my $run_time = sprintf("%0.3f",($end_time - $start_time));
+	my $timeUsed = "Time used: $run_time seconds\n";
+	$timeUsed = "\n" . $timeUsed if ( $unmatchsize > 0 );
+	print "$timeUsed";
 }
 
 # Mandatory arg checks
 foreach my $arg ( @ARGV ){
-	if ($arg =~ m/-{1,2}(r)$/){
-		$check_r = $check_r + 1;
-	} elsif ($arg =~ m/-{1,2}(re|rs)$/){
-		$check_rs = $check_rs + 1;
-	}
+	if ($arg =~ m/-{1,2}(r)$/){ $check_r = $check_r + 1; } 
+	elsif ($arg =~ m/-{1,2}(re|rs)$/){ $check_rs = $check_rs + 1; }
 }
 
 # Parsing params
@@ -192,7 +230,7 @@ open (my $log, '<:encoding(UTF-8)', $logfile) or die "Could not open log file '$
 # Test all log against regex(s)
 my $elems = (@re);
 my $checking = "";
-prepareFiles();
+#prepareFiles();
 while (my $line = <$log>){
 	my $match = 0;
 	my $elem = 0;
