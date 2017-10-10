@@ -16,16 +16,17 @@ my @re = ();
 my $regexfile = '';
 my %matcher = ();
 my @unmatch = ();
-my $detailed = '';
-my %detailedOutput = ();
 
 # Checks for ARGV
 my $check_r = 0;
 my $check_rs = 0;
 
-my $test = 0;
-my $output = 0;
 my $help = 0;
+my $test = 0;
+my $arcsight = 0;
+my $detailed = 0;
+my %detailedOutput = ();
+my $output = 0;
 
 # Global variables
 our $unmatchsize = 0;
@@ -38,6 +39,7 @@ sub help {
 	print "-r              Set an unique regex to test against the file instead of use a regex file\n";
 	print "                Cannot be set at same time -r and -re\n";
 	print "-t              Test regex syntax. If anyone is incorrect, the script dies\n";
+	print "-A              Print all regex in Arcsight format";
 	print "-d, --detailed  Print a matched line with all regex groups for all regex\n";
 	print "-o, --output    *NOT IMPLEMENTED* Classify all matched lines in files\n";
 	exit;
@@ -197,6 +199,17 @@ sub finalReport{
 		print "========================================================\n";	
 	} else { print "\n"; }
 
+	# Arcsight output
+	if ( $arcsight ){
+		print "\n================ Arcsight Regex Format =================\n";
+		foreach my $key (sort {$matcher{$b} <=> $matcher{$a}} keys %matcher){
+			my $regex = $key;
+			$regex =~ s/\\/\\\\/g;
+			print "$regex\n";
+		}
+		print "========================================================\n";
+	}
+
 	# Time used
 	my $end_time = Time::HiRes::time();
 	my $run_time = sprintf("%0.3f",($end_time - $start_time));
@@ -218,6 +231,7 @@ GetOptions (
 	're|rs=s' => \$regexfile,
 	"r=s" => \@re,
 	't' => \$test,
+	'A' => \$arcsight,
 	'details|d' => \$detailed,
 	'output|o' => \$output
 	) or help();
