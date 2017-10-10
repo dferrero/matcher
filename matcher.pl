@@ -7,6 +7,7 @@ use Path::Tiny;
 use Getopt::Long;
 use Time::HiRes;
 
+# Variables
 my $start_time = Time::HiRes::time(); 
 
 my $logfile = '';
@@ -15,6 +16,8 @@ my @re = ();
 my $regexfile = '';
 my %matcher = ();
 my @unmatch = ();
+my $detailed = '';
+my %detailedOutput = ();
 
 # Checks for ARGV
 my $check_r = 0;
@@ -29,12 +32,13 @@ our $unmatchsize = 0;
 
 sub help {
 	print "Usage: matcher.pl -l LOGPATH (-re REGEXPATH | -r REGEX) [-O]\n\n";
-	print "-l, --log       Set log file to be checked against regexs\n";
-	print "-re             Set regex file where are stored all regex to test\n\n";
 	print "-h, --help      Displays help message and exit\n";
-	print "-r              Set an unique regex to test against the file instead of use a regex file.\n";
+	print "-l, --log       Set log file to be checked against regexs\n";
+	print "-re             Set regex file where are stored all regex to test\n";
+	print "-r              Set an unique regex to test against the file instead of use a regex file\n";
 	print "                Cannot be set at same time -r and -re\n";
-	print "-t              Test regex syntax. If anyone is incorrect, the script dies.\n";
+	print "-t              Test regex syntax. If anyone is incorrect, the script dies\n";
+	print "-d, --detailed  Print a matched line with all regex groups for all regex\n";
 	print "-o, --output    *NOT IMPLEMENTED* Classify all matched lines in files\n";
 	exit;
 }
@@ -150,7 +154,7 @@ sub finalReport{
 
 	# Stats for all regex
 	print "\n";
-	foreach my $key (sort {$matcher{$a} <=> $matcher{$b}} keys %matcher) {
+	foreach my $key (sort {$matcher{$b} <=> $matcher{$a}} keys %matcher){
 		# Setting spaces before numbers
 		my $regexHits = $matcher{$key};
 		my $spaces = $spaceLength - length($regexHits);
@@ -166,15 +170,31 @@ sub finalReport{
 		print "$regexHits hits | $regex\n";
 	}
 
+	# Prin detailed matches
+	if ( $detailed ){
+		print "\n=================== Detailed matches ===================\n";
+		foreach my $key (sort {$matcher{$b} <=> $matcher{$a}} keys %matcher){
+			my $regex = $key;
+			my $example = $detailedOutput{$regex};
+			print "Regex => $regex\nExample => $example\n\n";
+			my @groups = $example =~ m/$regex/;
+			foreach my $pos ( 0 .. $#+-1 ){
+				print "Group " . ($pos+1) . " => " . $groups[$pos] . "\n";
+			}
+			print "----------------------------------------------------\n";
+		}
+		print "========================================================\n";
+	}
+
 	# Print unmatched lines
 	if ( $unmatchsize > 0 ){
-		print "\n======== Unmatched lines (max 5 displayed) ========\n";
+		print "\n========== Unmatched lines (max 5 displayed) ===========\n";
 		if ( $unmatchsize < 6 ){
 			foreach my $unm (@unmatch){ print "$unm\n"; }
 		} else {
 			for my $firsts (1 .. 5) { print "$unmatch[$firsts]\n"; }
 		}
-		print "===================================================\n";		
+		print "========================================================\n";	
 	} else { print "\n"; }
 
 	# Time used
@@ -195,14 +215,15 @@ foreach my $arg ( @ARGV ){
 GetOptions (
 	'help|h|?' => \$help,
 	'l|log=s' => \$logfile,
-	'output|o' => \$output,
-	't' => \$test,
+	're|rs=s' => \$regexfile,
 	"r=s" => \@re,
-	're|rs=s' => \$regexfile
+	't' => \$test,
+	'details|d' => \$detailed,
+	'output|o' => \$output
 	) or help();
 help() if $help; 
 
-# Checking mandatory params
+# Checking mandatory params and requirements
 die "Cannot be set re and regex file at same time." if ( $check_r and $check_rs);
 die "At least one regex or a regex file must be declared." if (! $check_r and ! $check_rs);
 die "Only one regex can be set with -r. If you need more than one regex, please use -re <regex file>." if ( $check_r > 1 );
@@ -210,8 +231,8 @@ die "Only one regex can be set with -r. If you need more than one regex, please 
 # Build regex hash 
 # a) One regex option
 if ( $check_r == 1 ){
-	print "\t@re\n";
 	#TODO
+	print "\t@re\n";
 } 
 # b) File regex option
 if ( $check_rs == 1 ){
@@ -241,13 +262,12 @@ while (my $line = <$log>){
 		if ( $line =~ m/$checking/ ){
 			$matcher{$checking}++;
 			$match++;
+			if ( $detailed and ! (exists $detailedOutput{$checking}) ){ $detailedOutput{$checking} = $line; }
 		} else {
 			$elem++;
 		}
 	}
-	if ( $elem == $elems ){
-		push @unmatch, $line;
-	}
+	if ( $elem == $elems ){ push @unmatch, $line; }
 }
 
 # Show results
