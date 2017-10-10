@@ -15,7 +15,7 @@ This list includes all available parameters which can be used with the script. I
 -r              Set an unique regex to test against the file instead of use a regex file
                 Cannot be set at same time -r and -re
 -t              Test regex syntax. If anyone is incorrect, the script dies
--j              Print one example of every regex with a match in JSON
+-d, detailed    Print one example of every regex with a match in JSON
 -o, --output    *NOT IMPLEMENTED* Classify all matched lines in files
 ```
 
