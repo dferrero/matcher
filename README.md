@@ -28,14 +28,14 @@ Regular expressions stored on regex file must be declared one per line. Comments
 
 ## Work in progress
 
+- [ ] Default regex and log files
+- [ ] Get output on files option
+- [ ] Test against multiple file logs
+- [ ] Improve performance
+- [x] ~~Print few unmatched lines (if they are too many)~~
+- [x] ~~Print group matches (one per regex)~~
+- [x] ~~Stats with % after execution~~
 - [x] ~~Help message~~
 - [x] ~~Check if all regex are correct syntactically~~
 - [x] ~~Better print for regex hits (using one line only)~~
-- [ ] Test against multiple file logs
-- [ ] Improve performance
-- [ ] Get output on files option
-- [x] ~~Print few unmatched lines (if they are too many)~~
-- [x] ~~Print group matches (one per regex)~~
-- [ ] Default regex and log files
-- [x] ~~Stats with % after execution~~
 - [x] ~~Output regex in Arcsight format using param `-A`~~
