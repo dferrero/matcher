@@ -6,20 +6,17 @@ use autodie;
 use Path::Tiny;
 use Getopt::Long;
 use Time::HiRes;
+use Cwd;
 
 # Variables
 my $start_time = Time::HiRes::time(); 
 
-my $logfile = '';
+my $logFile = '';
 
 my @re = ();
-my $regexfile = '';
+my $regexFile = '';
 my %matcher = ();
 my @unmatch = ();
-
-# Checks for ARGV
-my $check_r = 0;
-my $check_rs = 0;
 
 my $help = 0;
 my $test = 0;
@@ -29,15 +26,17 @@ my %detailedOutput = ();
 my $output = 0;
 
 # Global variables
-our $unmatchsize = 0;
+our $unmatchSize = 0;
+
+# Custom variables
+my $customLogPath = '';
+my $customRegexPath = '';
 
 sub help {
-	print "Usage: matcher.pl -l LOGPATH (-re REGEXPATH | -r REGEX) [-O]\n\n";
+	print "Usage: matcher.pl (-l LOGPATH) (-re REGEXPATH) [-htAdO]\n\n";
 	print "-h, --help      Displays help message and exit\n";
 	print "-l, --log       Set log file to be checked against regexs\n";
-	print "-re             Set regex file where are stored all regex to test\n";
-	print "-r              Set an unique regex to test against the file instead of use a regex file\n";
-	print "                Cannot be set at same time -r and -re\n";
+	print "-re             Set regex file where are stored all regex to test\n\n";
 	print "-t              Test regex syntax. If anyone is incorrect, the script dies\n";
 	print "-A              Print all regex in Arcsight format";
 	print "-d, --detailed  Print a matched line with all regex groups for all regex\n";
@@ -79,30 +78,10 @@ sub appendToFile {
 	    $file_handle->print($line . "\n");
 	}
 }
-
-
-sub readFromFile {
-	my $dir = path("/tmp"); # /tmp
-
-	my $file = $dir->child("file.txt");
-
-	# Read in the entire contents of a file
-	my $content = $file->slurp_utf8();
-
-	# openr_utf8() returns an IO::File object to read from
-	# with a UTF-8 decoding layer
-	my $file_handle = $file->openr_utf8();
-
-	# Read in line at a time
-	while( my $line = $file_handle->getline() ) {
-	        print $line;
-	}
-
-}
 =cut
 
 sub readRegexFile {
-	open (my $file, '<:encoding(UTF-8)', $regexfile) or die "Could not open file '$regexfile'";
+	open (my $file, '<:encoding(UTF-8)', $regexFile) or die "Could not open file '$regexFile'";
 	my $letter = '';
 	my $total_re = 0;
 	while (my $regex = <$file>){
@@ -146,13 +125,13 @@ sub finalReport{
 	}
 
 	my $spaceLength = length($maxValue);
-	$unmatchsize = (@unmatch);
+	$unmatchSize = (@unmatch);
 
-	my $total = $hits + $unmatchsize;
+	my $total = $hits + $unmatchSize;
 	my $percentage = ($hits / $total) * 100;
 	$percentage = sprintf("%0.2f", $percentage);
 	print "Matched log lines: $hits/$total ($percentage%)\n";
-	print "Unmatched lines: $unmatchsize\n" if ($unmatchsize > 0);
+	print "Unmatched lines: $unmatchSize\n" if ($unmatchSize > 0);
 
 	# Stats for all regex
 	print "\n";
@@ -189,9 +168,9 @@ sub finalReport{
 	}
 
 	# Print unmatched lines
-	if ( $unmatchsize > 0 ){
+	if ( $unmatchSize > 0 ){
 		print "\n========== Unmatched lines (max 5 displayed) ===========\n";
-		if ( $unmatchsize < 6 ){
+		if ( $unmatchSize < 6 ){
 			foreach my $unm (@unmatch){ print "$unm\n"; }
 		} else {
 			for my $firsts (1 .. 5) { print "$unmatch[$firsts]\n"; }
@@ -214,22 +193,15 @@ sub finalReport{
 	my $end_time = Time::HiRes::time();
 	my $run_time = sprintf("%0.3f",($end_time - $start_time));
 	my $timeUsed = "Time used: $run_time seconds\n";
-	$timeUsed = "\n" . $timeUsed if ( $unmatchsize > 0 );
+	$timeUsed = "\n" . $timeUsed if ( $unmatchSize > 0 );
 	print "$timeUsed";
-}
-
-# Mandatory arg checks
-foreach my $arg ( @ARGV ){
-	if ($arg =~ m/-{1,2}(r)$/){ $check_r = $check_r + 1; } 
-	elsif ($arg =~ m/-{1,2}(re|rs)$/){ $check_rs = $check_rs + 1; }
 }
 
 # Parsing params
 GetOptions (
 	'help|h|?' => \$help,
-	'l|log=s' => \$logfile,
-	're|rs=s' => \$regexfile,
-	"r=s" => \@re,
+	'l|log=s' => \$logFile,
+	're|rs=s' => \$regexFile,
 	't' => \$test,
 	'A' => \$arcsight,
 	'details|d' => \$detailed,
@@ -237,35 +209,56 @@ GetOptions (
 	) or help();
 help() if $help; 
 
-# Checking mandatory params and requirements
-die "Cannot be set re and regex file at same time." if ( $check_r and $check_rs);
-die "At least one regex or a regex file must be declared." if (! $check_r and ! $check_rs);
-die "Only one regex can be set with -r. If you need more than one regex, please use -re <regex file>." if ( $check_r > 1 );
-
+my $currentPath = cwd();
 # Build regex hash 
-# a) One regex option
-if ( $check_r == 1 ){
-	#TODO
-	print "\t@re\n";
-} 
-# b) File regex option
-if ( $check_rs == 1 ){
-	die "Regex file doesn't exist."  if ! ( -e $regexfile );
-	die "Regex file cannot be read." if ! ( -r $regexfile );
-	readRegexFile();
-	testRegex() if $test;
+# Test custom regex file
+if ( $regexFile ){
+	die "Regex file doesn't exist"  if ! ( -e $regexFile );
+	die "Regex file cannot be read" if ! ( -r $regexFile );
+} else {
+	# Testing custom regex file path
+	# If doesn't exist, it will try to use default file or the script will die
+	if ( -e $customRegexPath ){
+		die "Custom regex file cannot be read" if ! ( -r $customRegexPath );
+		$regexFile = $customRegexPath;
+	} else {
+		# Use default regex file. If doesn't exists, the program dies
+		print "[WARN] Custom regex file $customRegexPath doesn't exist. Trying to use default regex file...\n";
+		my $defaultRegexFile = path($currentPath . "/regex.txt");
+		die "Default regex file doesn't exist" if ! ( -e $defaultRegexFile );
+		die "Default regex file cannot be read" if ! ( -r $defaultRegexFile );
+		$regexFile = $defaultRegexFile;
+	}
 }
+readRegexFile();
+testRegex() if $test;
 
 # Check log path and open it
-die "Log file doesn't exist."  if ! ( -e $logfile );
-die "Log file cannot be read." if ! ( -r $logfile );
+if ( $logFile ){
+	die "Log file doesn't exist."  if ! ( -e $logFile );
+	die "Log file cannot be read." if ! ( -r $logFile );
+} else {
+	# Testing custom log file path
+	# If doesn't exist, it will try to use default file or the script will die
+	if ( -e $customLogPath ){
+		die "Custom log file cannot be read" if ! ( -r $customLogPath );
+		$logFile = $customLogPath;
+	} else {
+		# Use default regex file. If doesn't exists, the program dies
+		print "[WARN] Custom log file $customLogPath doesn't exist. Trying to use default log file...\n";
+		my $defaultLogFile = path($currentPath . "/log.txt");
+		die "Default log file doesn't exist" if ! ( -e $defaultLogFile );
+		die "Default log file cannot be read" if ! ( -r $defaultLogFile );
+		$logFile = $defaultLogFile;
+	}
+}
 
-open (my $log, '<:encoding(UTF-8)', $logfile) or die "Could not open log file '$logfile'";
+
+open (my $log, '<:encoding(UTF-8)', $logFile) or die "Could not open log file '$logFile'";
 
 # Test all log against regex(s)
 my $elems = (@re);
 my $checking = "";
-#prepareFiles();
 while (my $line = <$log>){
 	my $match = 0;
 	my $elem = 0;

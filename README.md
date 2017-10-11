@@ -12,8 +12,7 @@ This list includes all available parameters which can be used with the script. I
 -h, --help      Displays help message and exit
 -l, --log       Set log file to be checked against regexs
 -re             Set regex file where are stored all regex to test
--r              Set an unique regex to test against the file instead of use a regex file
-                Cannot be set at same time -r and -re
+
 -t              Test regex syntax. If anyone is incorrect, the script dies
 -A              Print all regex in Arcsight format
 -d, detailed    Print one example of every regex with a match in JSON
@@ -21,10 +20,6 @@ This list includes all available parameters which can be used with the script. I
 ```
 
 Regular expressions stored on regex file must be declared one per line. Comments are supported using `#` and empty lines are ignored.
-
-## Dependencies
-
-* Path::Tiny
 
 ## Work in progress
 
