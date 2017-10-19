@@ -154,15 +154,28 @@ sub finalReport{
 	# Prin detailed matches
 	if ( $detailed ){
 		print "\n=================== Detailed matches ===================\n";
+		my $firstTheoricalPrint = 0; 
+		my $firstPrint = 0;
 		foreach my $key (sort {$matcher{$b} <=> $matcher{$a}} keys %matcher){
-			my $regex = $key;
-			my $example = $detailedOutput{$regex};
-			print "Regex => $regex\nExample => $example\n\n";
-			my @groups = $example =~ m/$regex/;
-			foreach my $pos ( 0 .. $#+-1 ){
-				print "Group " . ($pos+1) . " => " . $groups[$pos] . "\n";
+			if ($matcher{$key} > 0) {
+				print "----------------------------------------------------\n" if ( $firstPrint != 0 ); 
+				my $regex = $key;
+				my $example = $detailedOutput{$regex};
+				$firstTheoricalPrint++;
+				my @groups = $example =~ m/$regex/;
+				my $totalGroups = $#+;
+				if ( $totalGroups > 0 ){
+					print "Regex => $regex\nExample => $example\n\n";
+					foreach my $pos ( 0 .. $totalGroups-1 ){ #$#+-1 ){
+						print "Group " . ($pos+1) . " => " . $groups[$pos] . "\n";
+					}
+					$firstPrint++;
+				}
 			}
-			print "----------------------------------------------------\n";
+		}
+		if ( $firstPrint == 0 ){
+			if ( $firstTheoricalPrint > 0 ) { print "Your regexs don't have any capture group!\n"; }
+			else { print "There is no matches with your regex!\n";}
 		}
 		print "========================================================\n";
 	}
