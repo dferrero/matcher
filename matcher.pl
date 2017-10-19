@@ -104,20 +104,31 @@ sub testRegex{
 	print "All regex have been checked. Syntax is correct.\n";
 }
 
-sub finalReport{
+sub results{
 	# Get window size
 	my ($width, $height) = 0;
 	if ( $^O eq "MSWin32"){ # Windows
 		use Win32::Console;
 		my $CONSOLE = Win32::Console->new();
 		($width, $height) = $CONSOLE->Size();
-	} else { # Linux / MacOS
-		$width = `tput cols`;
-	}
+	} else { $width = `tput cols`; } # Linux / MacOS
 
+	$unmatchSize = (@unmatch);
+
+	print "\n===== Results =============================\n";
+	results_stats($width, $height);
+
+	results_unmatches($unmatchSize) if ( $unmatchSize > 0 );
+	results_detailed() if ( $detailed );
+	results_arcsight() if ( $arcsight );
+
+	print "\n===== End =================================\n";
+}
+
+sub results_stats{
 	# Numeric values
-	my $hits = 0;
-	my $maxValue = 0;
+	my ($hits, $maxValue) = 0;
+	my ($w, $h) = @_;
 
 	foreach my $value (values %matcher) {
 		$hits = $hits + $value;
@@ -125,13 +136,6 @@ sub finalReport{
 	}
 
 	my $spaceLength = length($maxValue);
-	$unmatchSize = (@unmatch);
-
-	my $total = $hits + $unmatchSize;
-	my $percentage = ($hits / $total) * 100;
-	$percentage = sprintf("%0.2f", $percentage);
-	print "Matched log lines: $hits/$total ($percentage%)\n";
-	print "Unmatched lines: $unmatchSize\n" if ($unmatchSize > 0);
 
 	# Stats for all regex
 	print "\n";
@@ -140,74 +144,74 @@ sub finalReport{
 		my $regexHits = $matcher{$key};
 		my $spaces = $spaceLength - length($regexHits);
 		# Checking length of every line
-		my $spaceLeft = $width - ($spaceLength + 8 + 1);# 8 - " hits | " ; 1 blank space at the end
+		my $spaceLeft = $w - ($spaceLength + 8 + 1);# 8 - " hits | " ; 1 blank space at the end
 		my $regex = $key;
 		if ( length($key) > $spaceLeft ){
 			$regex = substr $key, 0, ($spaceLeft - 5);
 			$regex = $regex . "[...]";
 		}
-		# Print information
 		for my $i (1 .. $spaces){ print " "; }
 		print "$regexHits hits | $regex\n";
 	}
-
-	# Prin detailed matches
-	if ( $detailed ){
-		print "\n=================== Detailed matches ===================\n";
-		my $firstTheoricalPrint = 0; 
-		my $firstPrint = 0;
-		foreach my $key (sort {$matcher{$b} <=> $matcher{$a}} keys %matcher){
-			if ($matcher{$key} > 0) {
-				print "----------------------------------------------------\n" if ( $firstPrint != 0 ); 
-				my $regex = $key;
-				my $example = $detailedOutput{$regex};
-				$firstTheoricalPrint++;
-				my @groups = $example =~ m/$regex/;
-				my $totalGroups = $#+;
-				if ( $totalGroups > 0 ){
-					print "Regex => $regex\nExample => $example\n\n";
-					foreach my $pos ( 0 .. $totalGroups-1 ){ #$#+-1 ){
-						print "Group " . ($pos+1) . " => " . $groups[$pos] . "\n";
-					}
-					$firstPrint++;
-				}
-			}
-		}
-		if ( $firstPrint == 0 ){
-			if ( $firstTheoricalPrint > 0 ) { print "Your regexs don't have any capture group!\n"; }
-			else { print "There is no matches with your regex!\n";}
-		}
-		print "========================================================\n";
-	}
-
-	# Print unmatched lines
-	if ( $unmatchSize > 0 ){
-		print "\n========== Unmatched lines (max 5 displayed) ===========\n";
-		if ( $unmatchSize < 6 ){
-			foreach my $unm (@unmatch){ print "$unm\n"; }
-		} else {
-			for my $firsts (1 .. 5) { print "$unmatch[$firsts]\n"; }
-		}
-		print "========================================================\n";	
-	} else { print "\n"; }
-
-	# Arcsight output
-	if ( $arcsight ){
-		print "\n================ Arcsight Regex Format =================\n";
-		foreach my $key (sort {$matcher{$b} <=> $matcher{$a}} keys %matcher){
-			my $regex = $key;
-			$regex =~ s/\\/\\\\/g;
-			print "$regex\n";
-		}
-		print "========================================================\n";
-	}
-
 	# Time used
 	my $end_time = Time::HiRes::time();
 	my $run_time = sprintf("%0.3f",($end_time - $start_time));
-	my $timeUsed = "Time used: $run_time seconds\n";
-	$timeUsed = "\n" . $timeUsed if ( $unmatchSize > 0 );
+	my $timeUsed = "\nTime used: $run_time seconds\n";
 	print "$timeUsed";
+
+	# Resumee
+	my $total = $hits + $unmatchSize;
+	my $percentage = ($hits / $total) * 100;
+	$percentage = sprintf("%0.2f", $percentage);
+	print "\nMatched log lines: $hits/$total ($percentage%)\n";
+	print "Unmatched lines: $unmatchSize\n" if ($unmatchSize > 0);
+}
+
+sub results_unmatches{
+	# Note: This sub will change when unmatch option will be developed
+	my $unm = @_; 
+	print "\n===== Unmatched lines =====================\n";
+	if ( $unm < 6 ){
+		foreach my $unm (@unmatch){ print "$unm\n"; }
+	} else {
+		for my $firsts (1 .. 5) { print "$unmatch[$firsts]\n"; }
+	}
+}
+
+sub results_detailed{
+	print "\n===== Detailed matches ====================\n";
+	my $firstTheoricalPrint = 0; 
+	my $firstPrint = 0;
+	foreach my $key (sort {$matcher{$b} <=> $matcher{$a}} keys %matcher){
+		if ($matcher{$key} > 0) {
+			print "-------------------------------------------\n" if ( $firstPrint != 0 ); 
+			my $regex = $key;
+			my $example = $detailedOutput{$regex};
+			$firstTheoricalPrint++;
+			my @groups = $example =~ m/$regex/;
+			my $totalGroups = $#+;
+			if ( $totalGroups > 0 ){
+				print "Regex => $regex\nExample => $example\n\n";
+				foreach my $pos ( 0 .. $totalGroups-1 ){ #$#+-1 ){
+					print "Group " . ($pos+1) . " => " . $groups[$pos] . "\n";
+				}
+				$firstPrint++;
+			}
+		}
+	}
+	if ( $firstPrint == 0 ){
+		if ( $firstTheoricalPrint > 0 ) { print "Your regexs don't have any capture group!\n"; }
+		else { print "There is no matches with your regex!\n";}
+	}
+}
+
+sub results_arcsight{
+	print "\n===== Arcsight Regex Format ===============\n";
+	foreach my $key (sort {$matcher{$b} <=> $matcher{$a}} keys %matcher){
+		my $regex = $key;
+		$regex =~ s/\\/\\\\/g;
+		print "$regex\n";
+	}
 }
 
 # Parsing params
@@ -291,4 +295,4 @@ while (my $line = <$log>){
 }
 
 # Show results
-finalReport()
+results()
