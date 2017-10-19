@@ -24,6 +24,8 @@ Regular expressions stored on regex file must be declared one per line. Comments
 ## Work in progress
 
 - [ ] Default regex and log files
+- [ ] Option `-u [number]` to choose if unmatched lines are printed and how many ones
+- [ ] Rearrange output info
 - [ ] Get output on files option
 - [ ] Test against multiple file logs
 - [ ] Improve performance
