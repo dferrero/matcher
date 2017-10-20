@@ -8,78 +8,40 @@ use Getopt::Long;
 use Time::HiRes;
 use Cwd;
 
-# Variables
-my $start_time = Time::HiRes::time(); 
-
-my $logFile = '';
-
-my @re = ();
-my $regexFile = '';
-my %matcher = ();
-my @unmatch = ();
-
-my $help = 0;
-my $test = 0;
-my $arcsight = 0;
-my $detailed = 0;
-my %detailedOutput = ();
-my $output = 0;
-
-# Global variables
-our $unmatchSize = 0;
-
 # Custom variables
 my $customLogPath = '';
 my $customRegexPath = '';
 
+# === Variables ===
+my $start_time = Time::HiRes::time(); 
+my $regexFile = '';
+my $logFile = '';
+my ($help, $test, $arcsight, $detailed, $output) = 0;
+
+my @re = ();
+my @unmatch = ();
+
+my %matcher = ();
+my %detailedOutput = ();
+
+# Global variables
+our $unmatchSize = 0;
+
+# === Subs ===
+# Help message
 sub help {
 	print "Usage: matcher.pl (-l LOGPATH) (-re REGEXPATH) [-htAdO]\n\n";
-	print "-h, --help      Displays help message and exit\n";
-	print "-l, --log       Set log file to be checked against regexs\n";
-	print "-re             Set regex file where are stored all regex to test\n\n";
-	print "-t              Test regex syntax. If anyone is incorrect, the script dies\n";
-	print "-A              Print all regex in Arcsight format";
-	print "-d, --detailed  Print a matched line with all regex groups for all regex\n";
-	print "-o, --output    *NOT IMPLEMENTED* Classify all matched lines in files\n";
+	print "-h, --help        Displays help message and exit\n";
+	print "-l, --log <file>  Set log file to be checked against regexs\n";
+	print "-r <file>         Set regex file where are stored all regex to test\n\n";
+	print "-t                Test regex syntax. If anyone is incorrect, the script dies\n";
+	print "-A                Print all regex in Arcsight format";
+	print "-d, --detailed    Print a matched line with all regex groups for all regex\n";
+	print "-o, --output      *NOT IMPLEMENTED* Classify all matched lines in files\n";
 	exit;
 }
 
-=begin File operations aux subroutines
-sub writeToFile {
-	my $dir = path("/tmp"); # /tmp
-
-	my $file = $dir->child("file.txt"); # /tmp/file.txt
-
-	# Get a file_handle (IO::File object) you can write to
-	# with a UTF-8 encoding layer
-	my $file_handle = $file->openw_utf8();
-
-	my @list = ('a', 'list', 'of', 'lines');
-
-	foreach my $line ( @list ) {
-	    # Add the line to the file
-	    $file_handle->print($line . "\n");
-	}
-}
-
-sub appendToFile {
-	my $dir = path("/tmp"); # /tmp
-
-	my $file = $dir->child("file.txt"); # /tmp/file.txt
-
-	# Get a file_handle (IO::File object) you can write to
-	# with a UTF-8 encoding layer
-	my $file_handle = $file->opena_utf8();
-
-	my @list = ('a', 'list', 'of', 'lines');
-
-	foreach my $line ( @list ) {
-	    # Add the line to the file
-	    $file_handle->print($line . "\n");
-	}
-}
-=cut
-
+# Interaction with files
 sub readRegexFile {
 	open (my $file, '<:encoding(UTF-8)', $regexFile) or die "Could not open file '$regexFile'";
 	my $letter = '';
@@ -96,6 +58,7 @@ sub readRegexFile {
 	die "Regex file is empty or has all regex commented" if ($total_re eq 0);
 }
 
+# Tests
 sub testRegex{
 	foreach my $testing (@re){
 		my $res = eval { qr/$testing/ };
@@ -104,7 +67,8 @@ sub testRegex{
 	print "All regex have been checked. Syntax is correct.\n";
 }
 
-sub results{
+# Report subs
+sub report{
 	# Get window size
 	my ($width, $height) = 0;
 	if ( $^O eq "MSWin32"){ # Windows
@@ -114,18 +78,17 @@ sub results{
 	} else { $width = `tput cols`; } # Linux / MacOS
 
 	$unmatchSize = (@unmatch);
-
 	print "\n===== Results =============================\n";
-	results_stats($width, $height);
+	report_stats($width, $height);
 
-	results_unmatches($unmatchSize) if ( $unmatchSize > 0 );
-	results_detailed() if ( $detailed );
-	results_arcsight() if ( $arcsight );
+	report_unmatches($unmatchSize) if ( $unmatchSize > 0 );
+	report_detailed() if ( $detailed );
+	report_arcsight() if ( $arcsight );
 
 	print "\n===== End =================================\n";
 }
 
-sub results_stats{
+sub report_stats{
 	# Numeric values
 	my ($hits, $maxValue) = 0;
 	my ($w, $h) = @_;
@@ -134,7 +97,6 @@ sub results_stats{
 		$hits = $hits + $value;
 		$maxValue = $value if ($value > $maxValue);
 	}
-
 	my $spaceLength = length($maxValue);
 
 	# Stats for all regex
@@ -144,7 +106,7 @@ sub results_stats{
 		my $regexHits = $matcher{$key};
 		my $spaces = $spaceLength - length($regexHits);
 		# Checking length of every line
-		my $spaceLeft = $w - ($spaceLength + 8 + 1);# 8 - " hits | " ; 1 blank space at the end
+		my $spaceLeft = $w - ($spaceLength + 8 + 1); # 8 - " hits | " ; 1 blank space at the end
 		my $regex = $key;
 		if ( length($key) > $spaceLeft ){
 			$regex = substr $key, 0, ($spaceLeft - 5);
@@ -156,8 +118,7 @@ sub results_stats{
 	# Time used
 	my $end_time = Time::HiRes::time();
 	my $run_time = sprintf("%0.3f",($end_time - $start_time));
-	my $timeUsed = "\nTime used: $run_time seconds\n";
-	print "$timeUsed";
+	print "\nTime used: $run_time seconds\n";
 
 	# Resumee
 	my $total = $hits + $unmatchSize;
@@ -167,7 +128,7 @@ sub results_stats{
 	print "Unmatched lines: $unmatchSize\n" if ($unmatchSize > 0);
 }
 
-sub results_unmatches{
+sub report_unmatches{
 	# Note: This sub will change when unmatch option will be developed
 	my $unm = @_; 
 	print "\n===== Unmatched lines =====================\n";
@@ -178,10 +139,9 @@ sub results_unmatches{
 	}
 }
 
-sub results_detailed{
+sub report_detailed{
 	print "\n===== Detailed matches ====================\n";
-	my $firstTheoricalPrint = 0; 
-	my $firstPrint = 0;
+	my ($firstTheoricalPrint, $firstPrint) = 0; 
 	foreach my $key (sort {$matcher{$b} <=> $matcher{$a}} keys %matcher){
 		if ($matcher{$key} > 0) {
 			print "-------------------------------------------\n" if ( $firstPrint != 0 ); 
@@ -192,7 +152,7 @@ sub results_detailed{
 			my $totalGroups = $#+;
 			if ( $totalGroups > 0 ){
 				print "Regex => $regex\nExample => $example\n\n";
-				foreach my $pos ( 0 .. $totalGroups-1 ){ #$#+-1 ){
+				foreach my $pos ( 0 .. $totalGroups-1 ){ 
 					print "Group " . ($pos+1) . " => " . $groups[$pos] . "\n";
 				}
 				$firstPrint++;
@@ -205,7 +165,7 @@ sub results_detailed{
 	}
 }
 
-sub results_arcsight{
+sub report_arcsight{
 	print "\n===== Arcsight Regex Format ===============\n";
 	foreach my $key (sort {$matcher{$b} <=> $matcher{$a}} keys %matcher){
 		my $regex = $key;
@@ -214,11 +174,12 @@ sub results_arcsight{
 	}
 }
 
+# === Main program ===
 # Parsing params
 GetOptions (
 	'help|h|?' => \$help,
 	'l|log=s' => \$logFile,
-	're|rs=s' => \$regexFile,
+	'r=s' => \$regexFile,
 	't' => \$test,
 	'A' => \$arcsight,
 	'details|d' => \$detailed,
@@ -287,12 +248,10 @@ while (my $line = <$log>){
 			$matcher{$checking}++;
 			$match++;
 			if ( $detailed and ! (exists $detailedOutput{$checking}) ){ $detailedOutput{$checking} = $line; }
-		} else {
-			$elem++;
-		}
+		} else { $elem++; }
 	}
 	if ( $elem == $elems ){ push @unmatch, $line; }
 }
 
-# Show results
-results()
+# Show report
+report()
