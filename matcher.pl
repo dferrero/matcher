@@ -16,7 +16,9 @@ my $customRegexPath = '';
 my $start_time = Time::HiRes::time(); 
 my $regexFile = '';
 my $logFile = '';
+my $u = -1;
 my ($help, $test, $arcsight, $detailed, $output) = 0;
+
 
 my @re = ();
 my @unmatch = ();
@@ -30,13 +32,14 @@ our $unmatchSize = 0;
 # === Subs ===
 # Help message
 sub help {
-	print "Usage: matcher.pl (-l LOGPATH) (-re REGEXPATH) [-htAdO]\n\n";
+	print "Usage: matcher.pl (-l LOGPATH) (-r REGEXPATH) [-hdtuAo]\n\n";
 	print "-h, --help        Displays help message and exit\n";
 	print "-l, --log <file>  Set log file to be checked against regexs\n";
 	print "-r <file>         Set regex file where are stored all regex to test\n\n";
-	print "-t                Test regex syntax. If anyone is incorrect, the script dies\n";
-	print "-A                Print all regex in Arcsight format";
 	print "-d, --detailed    Print a matched line with all regex groups for all regex\n";
+	print "-t                Test regex syntax. If anyone is incorrect, the script dies\n";
+	print "-u [number]       Print first N unmatched lines. If no number is specified, it will print all\n";
+	print "-A                Print all regex in Arcsight format";
 	print "-o, --output      *NOT IMPLEMENTED* Classify all matched lines in files\n";
 	exit;
 }
@@ -81,9 +84,10 @@ sub report{
 	print "\n===== Results =============================\n";
 	report_stats($width, $height);
 
-	report_unmatches($unmatchSize) if ( $unmatchSize > 0 );
-	report_detailed() if ( $detailed );
-	report_arcsight() if ( $arcsight );
+#	report_unmatches($unmatchSize) if ( $unmatchSize > 0 );
+	report_unmatches() if ( $u > -1 );
+	report_detailed()  if ( $detailed );
+	report_arcsight()  if ( $arcsight );
 
 	print "\n===== End =================================\n";
 }
@@ -129,13 +133,12 @@ sub report_stats{
 }
 
 sub report_unmatches{
-	# Note: This sub will change when unmatch option will be developed
-	my $unm = @_; 
-	print "\n===== Unmatched lines =====================\n";
-	if ( $unm < 6 ){
+	if ( $u == 0 || $u > $unmatchSize ){
+		print "\n===== Unmatched lines (all) ===================\n";
 		foreach my $unm (@unmatch){ print "$unm\n"; }
 	} else {
-		for my $firsts (1 .. 5) { print "$unmatch[$firsts]\n"; }
+		print "\n===== Unmatched lines (" . $u . ") =================\n";
+		for my $firsts (0 .. $u-1) { print "$unmatch[$firsts]\n"; }
 	}
 }
 
@@ -180,12 +183,15 @@ GetOptions (
 	'help|h|?' => \$help,
 	'l|log=s' => \$logFile,
 	'r=s' => \$regexFile,
+	'details|d' => \$detailed,
 	't' => \$test,
 	'A' => \$arcsight,
-	'details|d' => \$detailed,
+	'u:i' => \$u,
 	'output|o' => \$output
 	) or help();
 help() if $help; 
+
+die "Number of unmatched lines must be a non negative number" if ( ! ($u == -1) && ($u < -1) );
 
 my $currentPath = cwd();
 # Build regex hash 

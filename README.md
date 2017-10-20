@@ -2,7 +2,7 @@
 
 matcher is a script written in Perl to test one or more regular expressions against log files and get a little report with total hits per regex, % of log matched and unmatched lines.
 
-TL;DR instant usage: `perl matcher.pl -l <log-file-path> -re <regex-file-path>`
+TL;DR instant usage: `perl matcher.pl -l <log-file-path> -r <regex-file-path>`
 
 ## Usage
 
@@ -11,11 +11,12 @@ This list includes all available parameters which can be used with the script. I
 ```
 -h, --help      Displays help message and exit
 -l, --log       Set log file to be checked against regexs
--r             Set regex file where are stored all regex to test
+-r              Set regex file where are stored all regex to test
 
--t              Test regex syntax. If anyone is incorrect, the script dies
--A              Print all regex in Arcsight format
 -d, detailed    Print one example of every regex with a match in JSON
+-t              Test regex syntax. If anyone is incorrect, the script dies
+-u [number]     Print first N unmatched lines. If no number is specified, it will print all
+-A              Print all regex in Arcsight format
 -o, --output    *NOT IMPLEMENTED* Classify all matched lines in files
 ```
 
@@ -25,11 +26,11 @@ Regular expressions stored on regex file must be declared one per line. Comments
 
 ## Work in progress
 
-- [ ] Option `-u [number]` to choose if unmatched lines are printed and how many ones
 - [ ] Option (to be defined) to update regex file and rearrange regex order for better performance
 - [ ] Get output on files option
 - [ ] Test against multiple file logs
 - [ ] Improve performance
+- [x] ~~Option `-u [number]` to choose if unmatched lines are printed and how many ones~~
 - [x] ~~Default regex and log files~~
 - [x] ~~Rearrange output info~~
 - [x] ~~Print group matches (one per regex)~~
