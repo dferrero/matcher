@@ -26,6 +26,7 @@ my @unmatch = ();
 
 my %matcher = ();
 my %detailedOutput = ();
+my %regexFiles = ();
 
 # Global variables
 our $unmatchSize = 0;
@@ -62,6 +63,15 @@ sub readRegexFile {
 		}
 	}
 	die "Regex file is empty or has all regex commented" if ($total_re eq 0);
+}
+
+sub createNewFile {
+	# Dinamic file handlers:
+	# http://www.perlmonks.org/?node_id=464068
+}
+
+sub closeAllFiles{
+
 }
 
 # Tests
