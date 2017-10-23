@@ -219,6 +219,7 @@ my $currentPath = cwd();
 # Build regex hash 
 # Test custom regex file
 if ( $regexFile ){
+	die "$regexFile is not a file"  if ! ( -f $regexFile );
 	die "Regex file doesn't exist"  if ! ( -e $regexFile );
 	die "Regex file cannot be read" if ! ( -r $regexFile );
 } else {
@@ -241,8 +242,9 @@ testRegex() if $test;
 
 # Check log path and open it
 if ( $logFile ){
-	die "Log file doesn't exist."  if ! ( -e $logFile );
-	die "Log file cannot be read." if ! ( -r $logFile );
+	die "$logFile is not a file"  if ! ( -f $logFile );
+	die "Log file doesn't exist"  if ! ( -e $logFile );
+	die "Log file cannot be read" if ! ( -r $logFile );
 } else {
 	# Testing custom log file path
 	# If doesn't exist, it will try to use default file or the script will die
