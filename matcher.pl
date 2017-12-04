@@ -9,24 +9,25 @@ use Time::HiRes;
 use Cwd;
 
 # Custom variables
-my $customLogPath = '';
-my $customRegexPath = '';
+my ($customLogPath, $customRegexPath) = ('') x2;
+#my $customRegexPath = '';
 
 # === Variables ===
 my $start_time = Time::HiRes::time(); 
-my $regexFile = '';
-my $logFile = '';
-my $output = '';
+my ($regexFile, $logFile, $output) = ('') x3;
+#my $regexFile = '';
+#my $logFile = '';
+#my $output = '';
 my $u = -1;
-my ($help, $test, $arcsight, $detailed, $outputmatches) = 0;
+my ($help, $verbose, $test, $arcsight, $detailed, $outputmatches) = (0) x6;
 
 
-my @re = ();
-my @unmatch = ();
+my (@re, @unmatch) = () x2;
+#my @unmatch = ();
 
-my %matcher = ();
-my %detailedOutput = ();
-my %regexFiles = ();
+my (%matcher, %detailedOutput, %regexFiles) = () x3;
+#my %detailedOutput = ();
+#my %regexFiles = ();
 
 # Global variables
 our $unmatchSize = 0;
@@ -37,6 +38,7 @@ our $outputHandler;
 sub help {
 	print "Usage: matcher.pl (-l LOGPATH) (-r REGEXPATH) [-hdtuAo]\n\n";
 	print "-h, --help        Displays help message and exit\n";
+	print "-v                Verbose output [WIP]. Repeat for multiple verbose levels\n";
 	print "-l, --log <file>  Set log file to be checked against regexs\n";
 	print "-r <file>         Set regex file where are stored all regex to test\n\n";
 	print "-d, --detailed    Print a matched line with all regex groups for all regex\n";
@@ -85,10 +87,10 @@ sub testRegex{
 
 # Report subs
 sub report{
-	open ($outputHandler, '>', $output) or die "Could not open file '$outputHandler'" if ( ! $output eq '' );
+	open ($outputHandler, '>', $output) or die "Could not open file '$outputHandler'" if (!$output eq '');
 	# Get window size
-	my ($width, $height) = 0;
-	if ( $^O eq "MSWin32"){ # Windows
+	my ($width, $height) = (0) x2;
+	if ($^O eq "MSWin32"){ # Windows
 		use Win32::Console;
 		my $CONSOLE = Win32::Console->new();
 		($width, $height) = $CONSOLE->Size();
@@ -98,16 +100,16 @@ sub report{
 	$output eq '' ? print "\n===== Results =============================\n" : print $outputHandler "===== Results =============================\n";
 	report_stats($width, $height);
 
-	report_unmatches() if ( $u > -1 );
-	report_detailed()  if ( $detailed );
-	report_arcsight()  if ( $arcsight );
+	report_unmatches() if ($u > -1);
+	report_detailed()  if ($detailed);
+	report_arcsight()  if ($arcsight);
 
-	close ($outputHandler) if ( ! $output eq '' );
+	close ($outputHandler) if (!$output eq '');
 }
 
 sub report_stats{
 	# Numeric values
-	my $hits = 0; my $maxValue = 0;
+	my ($hits, $maxValue) = (0) x2;
 	my ($w, $h) = @_;
 
 	foreach my $value (values %matcher) {
@@ -124,7 +126,7 @@ sub report_stats{
 		# Checking length of every line
 		my $spaceLeft = $w - ($spaceLength + 8 + 1); # 8 - " hits | " ; 1 blank space at the end
 		my $regex = $key;
-		if ( length($key) > $spaceLeft ){
+		if (length($key) > $spaceLeft){
 			$regex = substr $key, 0, ($spaceLeft - 5);
 			$regex = $regex . "[...]";
 		}
@@ -147,7 +149,7 @@ sub report_stats{
 }
 
 sub report_unmatches{
-	if ( $u == 0 || $u > $unmatchSize ){
+	if ($u == 0 || $u > $unmatchSize){
 		$output eq '' ? print "\n===== Unmatched lines (all) ===================\n" : print $outputHandler "\n===== Unmatched lines (all) ===================\n";
 		foreach my $unm (@unmatch){ $output eq '' ? print "$unm\n" : print $outputHandler "$unm\n"; }
 	} else {
@@ -158,28 +160,28 @@ sub report_unmatches{
 
 sub report_detailed{
 	$output eq '' ? print "\n===== Detailed matches ====================\n" : print $outputHandler "\n===== Detailed matches ====================\n";
-	my $firstTheoricalPrint = 0; my $firstPrint = 0; 
+	my ($firstTheoricalPrint, $firstPrint) = (0) x2; 
 	foreach my $key (sort {$matcher{$b} <=> $matcher{$a}} keys %matcher){
 		if ($matcher{$key} > 0) {
-			if ( $output eq '' ){ print "-------------------------------------------\n" if ( $firstPrint != 0 ); } 
-			else { print $outputHandler "-------------------------------------------\n" if ( $firstPrint != 0 ); }
+			if ($output eq ''){ print "-------------------------------------------\n"   if ($firstPrint != 0); } 
+			else { print $outputHandler "-------------------------------------------\n" if ($firstPrint != 0); }
 			
 			my $regex = $key;
 			my $example = $detailedOutput{$regex};
 			$firstTheoricalPrint++;
 			my @groups = $example =~ m/$regex/;
 			my $totalGroups = $#+;
-			if ( $totalGroups > 0 ){
+			if ($totalGroups > 0){
 				$output eq '' ? print "Regex => $regex\nExample => $example\n\n" : print $outputHandler "Regex => $regex\nExample => $example\n\n";
-				foreach my $pos ( 0 .. $totalGroups-1 ){ 
+				foreach my $pos (0 .. $totalGroups-1){ 
 					$output eq '' ? print "Group " . ($pos+1) . " => " . $groups[$pos] . "\n" : print $outputHandler "Group " . ($pos+1) . " => " . $groups[$pos] . "\n";
 				}
 				$firstPrint++;
 			}
 		}
 	}
-	if ( $firstPrint == 0 ){
-		if ( $firstTheoricalPrint > 0 ) { $output eq '' ? print "Your regexs don't have any capture group!\n" : print $outputHandler "Your regexs don't have any capture group!\n"; }
+	if ($firstPrint == 0){
+		if ($firstTheoricalPrint > 0) { $output eq '' ? print "Your regexs don't have any capture group!\n" : print $outputHandler "Your regexs don't have any capture group!\n"; }
 		else { $output eq '' ? print "There is no matches with your regex!\n" : print $outputHandler "There is no matches with your regex!\n"; }
 	}
 }
@@ -188,7 +190,7 @@ sub report_arcsight{
 	$output eq '' ? print "\n===== Arcsight Regex Format ===============\n" : print $outputHandler "\n===== Arcsight Regex Format ===============\n";
 	my $arcsightCounter = 1;
 	foreach my $key (sort {$matcher{$b} <=> $matcher{$a}} keys %matcher){
-		if ($matcher{$key} > 0 ){
+		if ($matcher{$key} > 0){
 			my $regex = $key;
 			$regex =~ s/\\/\\\\/g;
 			$output eq '' ? print "Regex #" . $arcsightCounter . ":\n" : print $outputHandler "Regex #" . $arcsightCounter . ":\n";
@@ -202,6 +204,7 @@ sub report_arcsight{
 # Parsing params
 GetOptions (
 	'help|h|?' => \$help,
+	'v+' => \$verbose,
 	'l|log=s' => \$logFile,
 	'r=s' => \$regexFile,
 	'details|d' => \$detailed,
@@ -213,27 +216,27 @@ GetOptions (
 	) or help();
 help() if $help; 
 
-die "Number of unmatched lines must be a non negative number" if ( ! ($u == -1) && ($u < -1) );
+die "Number of unmatched lines must be a non negative number" if (!($u == -1) && ($u < -1));
 
 my $currentPath = cwd();
 # Build regex hash 
 # Test custom regex file
-if ( $regexFile ){
-	die "$regexFile is not a file"  if ! ( -f $regexFile );
-	die "Regex file doesn't exist"  if ! ( -e $regexFile );
-	die "Regex file cannot be read" if ! ( -r $regexFile );
+if ($regexFile){
+	die "$regexFile is not a file"  if ! (-f $regexFile);
+	die "Regex file doesn't exist"  if ! (-e $regexFile);
+	die "Regex file cannot be read" if ! (-r $regexFile);
 } else {
 	# Testing custom regex file path
 	# If doesn't exist, it will try to use default file or the script will die
-	if ( -e $customRegexPath ){
-		die "Custom regex file cannot be read" if ! ( -r $customRegexPath );
+	if (-e $customRegexPath){
+		die "Custom regex file cannot be read" if ! (-r $customRegexPath);
 		$regexFile = $customRegexPath;
 	} else {
 		# Use default regex file. If doesn't exists, the program dies
 		print "[WARN] Custom regex file $customRegexPath doesn't exist. Trying to use default regex file...\n";
 		my $defaultRegexFile = path($currentPath . "/regex.txt");
-		die "Default regex file doesn't exist" if ! ( -e $defaultRegexFile );
-		die "Default regex file cannot be read" if ! ( -r $defaultRegexFile );
+		die "Default regex file doesn't exist"  if ! (-e $defaultRegexFile);
+		die "Default regex file cannot be read" if ! (-r $defaultRegexFile);
 		$regexFile = $defaultRegexFile;
 	}
 }
@@ -241,26 +244,25 @@ readRegexFile();
 testRegex() if $test;
 
 # Check log path and open it
-if ( $logFile ){
-	die "$logFile is not a file"  if ! ( -f $logFile );
-	die "Log file doesn't exist"  if ! ( -e $logFile );
-	die "Log file cannot be read" if ! ( -r $logFile );
+if ($logFile){
+	die "$logFile is not a file"  if ! (-f $logFile);
+	die "Log file doesn't exist"  if ! (-e $logFile);
+	die "Log file cannot be read" if ! (-r $logFile);
 } else {
 	# Testing custom log file path
 	# If doesn't exist, it will try to use default file or the script will die
-	if ( -e $customLogPath ){
-		die "Custom log file cannot be read" if ! ( -r $customLogPath );
+	if (-e $customLogPath){
+		die "Custom log file cannot be read" if ! (-r $customLogPath);
 		$logFile = $customLogPath;
 	} else {
 		# Use default regex file. If doesn't exists, the program dies
 		print "[WARN] Custom log file $customLogPath doesn't exist. Trying to use default log file...\n";
 		my $defaultLogFile = path($currentPath . "/log.txt");
-		die "Default log file doesn't exist" if ! ( -e $defaultLogFile );
-		die "Default log file cannot be read" if ! ( -r $defaultLogFile );
+		die "Default log file doesn't exist"  if ! (-e $defaultLogFile);
+		die "Default log file cannot be read" if ! (-r $defaultLogFile);
 		$logFile = $defaultLogFile;
 	}
 }
-
 
 open (my $log, '<:encoding(UTF-8)', $logFile) or die "Could not open log file '$logFile'";
 
@@ -268,19 +270,19 @@ open (my $log, '<:encoding(UTF-8)', $logFile) or die "Could not open log file '$
 my $elems = (@re);
 my $checking = "";
 while (my $line = <$log>){
-	my $match = 0;
-	my $elem = 0;
+	my ($match, $elem) = (0) x 2;
+#	my $elem = 0;
 	chomp $line;
-	while ( ! $match and ( $elem < $elems )){
+	while (! $match and ($elem < $elems)){
 		$checking = $re[$elem];
 		chomp $checking;
-		if ( $line =~ m/$checking/ ){
+		if ($line =~ m/$checking/){
 			$matcher{$checking}++;
 			$match++;
-			if ( $detailed and ! (exists $detailedOutput{$checking}) ){ $detailedOutput{$checking} = $line; }
+			if ($detailed and ! (exists $detailedOutput{$checking})){ $detailedOutput{$checking} = $line; }
 		} else { $elem++; }
 	}
-	if ( $elem == $elems ){ push @unmatch, $line; }
+	if ($elem == $elems){ push @unmatch, $line; }
 }
 
 # Show report
