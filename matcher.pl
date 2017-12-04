@@ -10,24 +10,15 @@ use Cwd;
 
 # Custom variables
 my ($customLogPath, $customRegexPath) = ('') x2;
-#my $customRegexPath = '';
 
 # === Variables ===
-my $start_time = Time::HiRes::time(); 
+my $time_init = Time::HiRes::time(); 
 my ($regexFile, $logFile, $output) = ('') x3;
-#my $regexFile = '';
-#my $logFile = '';
-#my $output = '';
-my $u = -1;
 my ($help, $verbose, $test, $arcsight, $detailed, $outputmatches) = (0) x6;
-
+my $u = -1;
 
 my (@re, @unmatch) = () x2;
-#my @unmatch = ();
-
 my (%matcher, %detailedOutput, %regexFiles) = () x3;
-#my %detailedOutput = ();
-#my %regexFiles = ();
 
 # Global variables
 our $unmatchSize = 0;
@@ -38,7 +29,7 @@ our $outputHandler;
 sub help {
 	print "Usage: matcher.pl (-l LOGPATH) (-r REGEXPATH) [-hdtuAo]\n\n";
 	print "-h, --help        Displays help message and exit\n";
-	print "-v                Verbose output [WIP]. Repeat for multiple verbose levels\n";
+	print "-v                Verbose output [WIP]\n";
 	print "-l, --log <file>  Set log file to be checked against regexs\n";
 	print "-r <file>         Set regex file where are stored all regex to test\n\n";
 	print "-d, --detailed    Print a matched line with all regex groups for all regex\n";
@@ -73,7 +64,7 @@ sub createNewFile {
 }
 
 sub closeAllFiles{
-
+	# WIP
 }
 
 # Tests
@@ -134,9 +125,9 @@ sub report_stats{
 		$output eq '' ? print "$regexHits hits | $regex\n" : print $outputHandler "$regexHits hits | $regex\n";
 	}
 	# Time used
-	my $end_time = Time::HiRes::time();
-	my $run_time = sprintf("%0.3f",($end_time - $start_time));
-	$output eq '' ? print "\nTime used: $run_time seconds\n" : print $outputHandler "\nTime used: $run_time seconds\n";
+	my $time_finish = Time::HiRes::time();
+	my $time_execution = sprintf("%0.3f",($time_finish - $time_init));
+	$output eq '' ? print "\nTime used: $time_execution seconds\n" : print $outputHandler "\nTime used: $time_execution seconds\n";
 
 	# Resumee
 	my $total = $hits + $unmatchSize;
@@ -271,7 +262,6 @@ my $elems = (@re);
 my $checking = "";
 while (my $line = <$log>){
 	my ($match, $elem) = (0) x 2;
-#	my $elem = 0;
 	chomp $line;
 	while (! $match and ($elem < $elems)){
 		$checking = $re[$elem];
