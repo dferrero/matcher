@@ -12,7 +12,8 @@ use Cwd;
 my ($customLogPath, $customRegexPath) = ('') x2;
 
 # === Variables ===
-my $time_init = Time::HiRes::time(); 
+my $time_init = Time::HiRes::time();
+my ($time_openfile, $time_execution, $time_finish) = ('') x3;
 my ($regexFile, $logFile, $output) = ('') x3;
 my ($help, $verbose, $test, $arcsight, $detailed, $outputmatches) = (0) x6;
 my $u = -1;
@@ -125,9 +126,13 @@ sub report_stats{
 		$output eq '' ? print "$regexHits hits | $regex\n" : print $outputHandler "$regexHits hits | $regex\n";
 	}
 	# Time used
-	my $time_finish = Time::HiRes::time();
-	my $time_execution = sprintf("%0.3f",($time_finish - $time_init));
-	$output eq '' ? print "\nTime used: $time_execution seconds\n" : print $outputHandler "\nTime used: $time_execution seconds\n";
+	if ($verbose){
+		$time_finish = Time::HiRes::time();
+		$time_execution =  sprintf("%0.3f",($time_finish - $time_init));
+		my $time_opening = sprintf("%0.3f",($time_openfile - $time_init));
+		$output eq '' ? print "\nTime to open the file: $time_opening seconds" : print $outputHandler "\nTime to open the file: $time_opening seconds";
+		$output eq '' ? print "\nTime used: $time_execution seconds\n" : print $outputHandler "\nTime used: $time_execution seconds\n";
+	}
 
 	# Resumee
 	my $total = $hits + $unmatchSize;
@@ -256,7 +261,7 @@ if ($logFile){
 }
 
 open (my $log, '<:encoding(UTF-8)', $logFile) or die "Could not open log file '$logFile'";
-
+$time_openfile = Time::HiRes::time();
 # Test all log against regex(s)
 my $elems = (@re);
 my $checking = "";
