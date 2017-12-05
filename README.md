@@ -10,7 +10,7 @@ This list includes all available parameters which can be used with the script. I
 
 ```
 -h, --help      Displays help message and exit
--v		Verbose output [WIP]. Repeat for multiple verbose levels
+-v		Verbose output
 -l, --log       Set log file to be checked against regexs
 -r              Set regex file where are stored all regex to test
 
@@ -32,3 +32,4 @@ Regular expressions stored on regex file must be declared one per line. Comments
 - [ ] Test against multiple file logs
 - [ ] Daemon mode (monitoring one or more files to get unmatches and/or reports)
 - [ ] Improve performance
+- [ ] "Intelligent" print mode of regex results.

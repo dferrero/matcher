@@ -28,35 +28,58 @@ our $outputHandler;
 # === Subs ===
 # Help message
 sub help {
-	print "Usage: matcher.pl (-l LOGPATH) (-r REGEXPATH) [-hdtuAo]\n\n";
-	print "-h, --help        Displays help message and exit\n";
-	print "-v                Verbose output [WIP]\n";
-	print "-l, --log <file>  Set log file to be checked against regexs\n";
-	print "-r <file>         Set regex file where are stored all regex to test\n\n";
-	print "-d, --detailed    Print a matched line with all regex groups for all regex\n";
-	print "-t                Test regex syntax. If anyone is incorrect, the script dies\n";
-	print "-u [number]       Print first N unmatched lines. If no number is specified, it will print all\n";
-	print "-A                Print all regex in Arcsight format";
-	print "-o <filename>     Print results on a file instead of screen\n";
-	print "-om               Classify all matched lines in files\n";
+	print "Usage: matcher.pl (-l LOGPATH) (-r REGEXPATH) [-hvdtuAo]
+	-h, --help        Displays help message and exit
+	-v                Verbose output
+	-l, --log <file>  Set log file to be checked against regexs
+	-r <file>         Set regex file where are stored all regex to test
+
+	-d, --detailed    Print a matched line with all regex groups for all regex
+	-t                Test regex syntax. If anyone is incorrect, the script dies
+	-u [number]       Print first N unmatched lines. If no number is specified, it will print all
+	-A                Print all regex in Arcsight format
+	-o <filename>     Print results on a file instead of screen
+	-om               Classify all matched lines in files
+	";
 	exit;
+}
+
+# Starting message
+sub logo{
+print "
+   _____          __         .__                  
+  /     \\ _____ _/  |_  ____ |  |__   ___________ 
+ /  \\ /  \\\\__  \\\\   __\\/ ___\\|  |  \\_/ __ \\_  __ \\
+/    Y    \\/ __ \\|  | \\  \\___|   Y  \\  ___/|  | \\/
+\\____|__  (____  /__|  \\___  >___|  /\\___  >__|   
+        \\/     \\/          \\/     \\/     \\/       
+   Author: \@dferrero	Version: 0.1\n\n";
 }
 
 # Interaction with files
 sub readRegexFile {
+	print "Reading regex file...\t" if $verbose;
 	open (my $file, '<:encoding(UTF-8)', $regexFile) or die "Could not open file '$regexFile'";
 	my $letter = '';
-	my $total_re = 0;
+	my ($total_re, $duplicates) = (0) x2;
 	while (my $regex = <$file>){
 		chomp $regex;
 		$letter = substr($regex, 0, 1);
 		if ($letter ne "#" and $letter ne ""){
-			$total_re++;
-			push @re, $regex;
-			$matcher{$regex} .= 0;
+			if (exists $matcher{$regex}) {
+				print "[WARN] Duplicate found!\n" if (($duplicates eq 0) and $verbose);
+				$duplicates++;
+				print "Ignoring regex $regex\n" if $verbose;
+			} else {
+				$total_re++;
+				push @re, $regex;
+				$matcher{$regex} .= 0;
+			}
+
 		}
 	}
-	die "Regex file is empty or has all regex commented" if ($total_re eq 0);
+	if ($verbose) { $duplicates eq 0 ? print "Done\n" : print "Total duplicates: $duplicates\n\n"; }
+	die "Regex file is empty" if ($total_re eq 0);
 }
 
 sub createNewFile {
@@ -70,11 +93,12 @@ sub closeAllFiles{
 
 # Tests
 sub testRegex{
+	print "Checking regex syntax\n" if $verbose;
 	foreach my $testing (@re){
 		my $res = eval { qr/$testing/ };
 		die "Invalid regex syntax on $@" if $@;
 	}
-	print "All regex have been checked. Syntax is correct.\n";
+	print "All regex have been checked. Syntax is correct.\n" if $verbose;
 }
 
 # Report subs
@@ -130,18 +154,20 @@ sub report_stats{
 		$time_finish = Time::HiRes::time();
 		$time_execution =  sprintf("%0.3f",($time_finish - $time_init));
 		my $time_opening = sprintf("%0.3f",($time_openfile - $time_init));
-		$output eq '' ? print "\nTime to open the file: $time_opening seconds" : print $outputHandler "\nTime to open the file: $time_opening seconds";
-		$output eq '' ? print "\nTime used: $time_execution seconds\n" : print $outputHandler "\nTime used: $time_execution seconds\n";
+		$output eq '' ? print "\nTime reading the file:\t$time_opening seconds" : print $outputHandler "\nTime reading the file:\t$time_opening seconds";
+		$output eq '' ? print "\nTime used on execution:\t$time_execution seconds\n" : print $outputHandler "\nTime used on execution:\t$time_execution seconds\n";
 	}
 
 	# Resumee
 	my $total = $hits + $unmatchSize;
-	my $percentage = ($hits / $total) * 100;
+	my $percentage = ($total eq 0 ? 0 : ($hits / $total) * 100);
 	$percentage = sprintf("%0.2f", $percentage);
-	$output eq '' ? print "\nMatched log lines: $hits/$total ($percentage%)\n" : print $outputHandler "\nMatched log lines: $hits/$total ($percentage%)\n";
-	if ($unmatchSize > 0){
-		$output eq '' ? print "Unmatched lines: $unmatchSize\n" : print $outputHandler "Unmatched lines: $unmatchSize\n";
+	if ($output eq ''){ 
+		$total eq 0 ? print "\nMatched log lines:\t0 ($percentage%)\n" : print "\nMatched log lines:\t$hits/$total ($percentage%)\n";
+	} else { 
+		$total eq 0 ? print $outputHandler "\nMatched log lines:\t0 ($percentage%)\n" : print $outputHandler "\nMatched log lines:\t$hits/$total ($percentage%)\n"; 
 	}
+	if ($unmatchSize > 0){ $output eq '' ? print "Unmatched lines:\t$unmatchSize\n" : print $outputHandler "Unmatched lines:\t$unmatchSize\n"; }
 }
 
 sub report_unmatches{
@@ -159,7 +185,7 @@ sub report_detailed{
 	my ($firstTheoricalPrint, $firstPrint) = (0) x2; 
 	foreach my $key (sort {$matcher{$b} <=> $matcher{$a}} keys %matcher){
 		if ($matcher{$key} > 0) {
-			if ($output eq ''){ print "-------------------------------------------\n"   if ($firstPrint != 0); } 
+			if ($output eq ''){   print "-------------------------------------------\n" if ($firstPrint != 0); } 
 			else { print $outputHandler "-------------------------------------------\n" if ($firstPrint != 0); }
 			
 			my $regex = $key;
@@ -211,11 +237,11 @@ GetOptions (
 	'om' => \$outputmatches
 	) or help();
 help() if $help; 
+logo();
 
 die "Number of unmatched lines must be a non negative number" if (!($u == -1) && ($u < -1));
 
 my $currentPath = cwd();
-# Build regex hash 
 # Test custom regex file
 if ($regexFile){
 	die "$regexFile is not a file"  if ! (-f $regexFile);
@@ -229,7 +255,7 @@ if ($regexFile){
 		$regexFile = $customRegexPath;
 	} else {
 		# Use default regex file. If doesn't exists, the program dies
-		print "[WARN] Custom regex file $customRegexPath doesn't exist. Trying to use default regex file...\n";
+		print "[WARN] Custom regex file $customRegexPath doesn't exist. Trying to use default regex file...\n" if $verbose;
 		my $defaultRegexFile = path($currentPath . "/regex.txt");
 		die "Default regex file doesn't exist"  if ! (-e $defaultRegexFile);
 		die "Default regex file cannot be read" if ! (-r $defaultRegexFile);
@@ -252,7 +278,7 @@ if ($logFile){
 		$logFile = $customLogPath;
 	} else {
 		# Use default regex file. If doesn't exists, the program dies
-		print "[WARN] Custom log file $customLogPath doesn't exist. Trying to use default log file...\n";
+		print "[WARN] Custom log file $customLogPath doesn't exist. Trying to use default log file...\n" if $verbose;
 		my $defaultLogFile = path($currentPath . "/log.txt");
 		die "Default log file doesn't exist"  if ! (-e $defaultLogFile);
 		die "Default log file cannot be read" if ! (-r $defaultLogFile);
@@ -260,7 +286,9 @@ if ($logFile){
 	}
 }
 
+print "Reading log file...\t" if $verbose;
 open (my $log, '<:encoding(UTF-8)', $logFile) or die "Could not open log file '$logFile'";
+print "Done\n" if $verbose;
 $time_openfile = Time::HiRes::time();
 # Test all log against regex(s)
 my $elems = (@re);
@@ -279,6 +307,5 @@ while (my $line = <$log>){
 	}
 	if ($elem == $elems){ push @unmatch, $line; }
 }
-
 # Show report
 report()
