@@ -15,7 +15,7 @@ my ($customLogPath, $customRegexPath) = ('') x2;
 my $time_init = Time::HiRes::time();
 my ($time_openfile, $time_execution, $time_finish) = ('') x3;
 my ($regexFile, $logFile, $output) = ('') x3;
-my ($help, $verbose, $test, $arcsight, $detailed, $outputmatches) = (0) x6;
+my ($help, $verbose, $test, $arcsight, $detailed, $sort) = (0) x6;
 my $u = -1;
 
 my (@re, @unmatch) = () x2;
@@ -28,7 +28,7 @@ our $outputHandler;
 # === Subs ===
 # Help message
 sub help {
-	print "Usage: matcher.pl (-l LOGPATH) (-r REGEXPATH) [-hvdtuAo]
+	print "Usage: matcher.pl (-l LOGPATH) (-r REGEXPATH) [-hvdtFuAso]
 	-h, --help        Displays help message and exit
 	-v                Verbose output
 	-l, --log <file>  Set log file to be checked against regexs
@@ -36,10 +36,11 @@ sub help {
 
 	-d, --detailed    Print a matched line with all regex groups for all regex
 	-t                Test regex syntax. If anyone is incorrect, the script dies
+	-F                [WIP] Test log against all regex, even if a match is found
 	-u [number]       Print first N unmatched lines. If no number is specified, it will print all
 	-A                Print all regex in Arcsight format
-	-o <filename>     Print results on a file instead of screen
-	-om               Classify all matched lines in files
+	-s                [WIP] Sort
+	-o <filename>     [WIP] Classify all matched lines in files
 	";
 	exit;
 }
@@ -222,6 +223,15 @@ sub report_arcsight{
 	}
 }
 
+sub sortRegexOnFile{
+	# Do we want to save comments and empty lines?
+	open (my $file, '>', $regexFile) or die "Could not open file '$regexFile'";
+	foreach my $key (sort {$matcher{$b} <=> $matcher{$a}} keys %matcher){
+		print $file "$key\n";
+	}
+	close($file);
+}
+
 # === Main program ===
 # Parsing params
 GetOptions (
@@ -233,8 +243,8 @@ GetOptions (
 	't' => \$test,
 	'A' => \$arcsight,
 	'u:i' => \$u,
+	's' => \$sort,
 	'o=s' => \$output,
-	'om' => \$outputmatches
 	) or help();
 help() if $help; 
 logo();
@@ -309,3 +319,9 @@ while (my $line = <$log>){
 }
 # Show report
 report()
+# Sort regex
+if ($sort){
+	print "Rearranging RE's...\t" if $verbose;
+	sortRegexOnFile();
+	print "Done\n" if $verbose;
+}
