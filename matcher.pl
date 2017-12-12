@@ -9,20 +9,21 @@ use Time::HiRes;
 use Cwd;
 
 # Custom variables
-my ($customLogPath, $customRegexPath) = ('') x2;
+my $customLogPath = ''; 
+my $customRegexPath = '';
 
 # === Variables ===
 my $time_init = Time::HiRes::time();
 my ($time_openfile, $time_execution, $time_finish) = ('') x3;
 my ($regexFile, $logFile, $output) = ('') x3;
-my ($help, $verbose, $test, $arcsight, $detailed, $sort) = (0) x6;
+my ($help, $verbose, $test, $arcsight, $detailed, $sort, $forceAll) = (0) x7;
 my $u = -1;
 
 my (@re, @unmatch) = () x2;
 my (%matcher, %detailedOutput, %regexFiles) = () x3;
 
 # Global variables
-our $unmatchSize = 0;
+our ($unmatchSize, $globalHits, $total) = (0) x3;
 our $outputHandler;
 
 # === Subs ===
@@ -36,11 +37,11 @@ sub help {
 
 	-d, --detailed    Print a matched line with all regex groups for all regex
 	-t                Test regex syntax. If anyone is incorrect, the script dies
-	-F                [WIP] Test log against all regex, even if a match is found
+	-F                Test log against all regex, even if a match is found
 	-u [number]       Print first N unmatched lines. If no number is specified, it will print all
 	-A                Print all regex in Arcsight format
-	-s                [WIP] Sort
-	-o <filename>     [WIP] Classify all matched lines in files
+	-s                Sort all regex. All comments and empty will be removed
+	-o <filename>     Get output redirected to a file instead of screen
 	";
 	exit;
 }
@@ -81,15 +82,7 @@ sub readRegexFile {
 	}
 	if ($verbose) { $duplicates eq 0 ? print "Done\n" : print "Total duplicates: $duplicates\n\n"; }
 	die "Regex file is empty" if ($total_re eq 0);
-}
-
-sub createNewFile {
-	# Dinamic file handlers:
-	# http://www.perlmonks.org/?node_id=464068
-}
-
-sub closeAllFiles{
-	# WIP
+	close($file);
 }
 
 # Tests
@@ -104,7 +97,9 @@ sub testRegex{
 
 # Report subs
 sub report{
-	open ($outputHandler, '>', $output) or die "Could not open file '$outputHandler'" if (!$output eq '');
+	if (!$output eq ''){
+		open ($outputHandler, '>:encoding(UTF-8)', $output) or die "Could not open file '$outputHandler'";
+	}
 	# Get window size
 	my ($width, $height) = (0) x2;
 	if ($^O eq "MSWin32"){ # Windows
@@ -169,20 +164,20 @@ sub report_stats{
 	}
 
 	# Resumee
-	my $total = $hits + $unmatchSize;
-	my $percentage = ($total eq 0 ? 0 : ($hits / $total) * 100);
+	my $total = $globalHits + $unmatchSize;
+	my $percentage = ($total eq 0 ? 0 : ($globalHits / $total) * 100);
 	$percentage = sprintf("%0.2f", $percentage);
 	if ($output eq ''){
 		if ($total eq 0){
 			print "\nMatched log lines:\t0 ($percentage%)\n";
 		} else {
-			print "\nMatched log lines:\t$hits/$total ($percentage%)\n";
+			print "\nMatched log lines:\t$globalHits/$total ($percentage%)\n";
 		}
 	} else { 
 		if ($total eq 0){
 			print $outputHandler "\nMatched log lines:\t0 ($percentage%)\n";
 		} else {
-			print $outputHandler "\nMatched log lines:\t$hits/$total ($percentage%)\n"; 
+			print $outputHandler "\nMatched log lines:\t$globalHits/$total ($percentage%)\n"; 
 		}
 	}
 	if ($unmatchSize > 0){ 
@@ -281,8 +276,7 @@ sub report_arcsight{
 			my $regex = $key;
 			$regex =~ s/\\/\\\\/g;
 			if ($output eq ''){
-				print "Regex #" . $arcsightCounter . ":\n";
-				print "$regex\n";
+				print "Regex #" . $arcsightCounter . ":\n$regex\n";
 			} else {
 				print $outputHandler "Regex #" . $arcsightCounter . ":\n";
 				print $outputHandler "$regex\n";
@@ -294,11 +288,13 @@ sub report_arcsight{
 
 sub sortRegexOnFile{
 	# Do we want to save comments and empty lines?
-	open (my $file, '>', $regexFile) or die "Could not open file '$regexFile'";
+	print "\nSorting regex...\t" if $verbose;
+	open (my $reFile, '>:encoding(UTF-8)', $regexFile) or die "Could not open file '$regexFile'";
 	foreach my $key (sort {$matcher{$b} <=> $matcher{$a}} keys %matcher){
-		print $file "$key\n";
+		print $reFile "$key\n";
 	}
-	close($file);
+	print "Done\n" if $verbose;
+	close($reFile);
 }
 
 # === Main program ===
@@ -310,14 +306,14 @@ GetOptions (
 	'r=s' => \$regexFile,
 	'details|d' => \$detailed,
 	't' => \$test,
-	'A' => \$arcsight,
+	'F' => \$forceAll,
 	'u:i' => \$u,
+	'A' => \$arcsight,
 	's' => \$sort,
 	'o=s' => \$output,
 	) or help();
 help() if $help; 
 logo();
-
 die "Number of unmatched lines must be a non negative number" if (!($u == -1) && ($u < -1));
 
 my $currentPath = cwd();
@@ -381,24 +377,39 @@ my $checking = "";
 while (my $line = <$log>){
 	my ($match, $elem) = (0) x 2;
 	chomp $line;
-	while (! $match and ($elem < $elems)){
-		$checking = $re[$elem];
-		chomp $checking;
-		if ($line =~ m/$checking/){
-			$matcher{$checking}++;
-			$match++;
-			if ($detailed and ! (exists $detailedOutput{$checking})){ 
-				$detailedOutput{$checking} = $line; 
-			}
-		} else { $elem++; }
+	if ($forceAll){ # Check against all regex
+		while ($elem < $elems){
+			$checking = $re[$elem];
+			chomp $checking;
+			if ($line =~ m/$checking/){
+				$matcher{$checking}++;
+				$globalHits++ if ($match eq 0);
+				$match++;
+				if ($detailed and ! (exists $detailedOutput{$checking})){ 
+					$detailedOutput{$checking} = $line; 
+				}
+			} 
+			$elem++;
+		}
+	} else { # Check until a match is found
+		while (! $match and ($elem < $elems)){
+			$checking = $re[$elem];
+			chomp $checking;
+			if ($line =~ m/$checking/){
+				$matcher{$checking}++;
+				$match++;
+				$globalHits++;
+				if ($detailed and ! (exists $detailedOutput{$checking})){ 
+					$detailedOutput{$checking} = $line; 
+				}
+			} else { $elem++; }
+		}
 	}
-	if ($elem == $elems){ push @unmatch, $line; }
+	if ($elem == $elems and $match eq 0){ push @unmatch, $line; }
 }
+
 # Show report
-report()
-# Sort regex
-if ($sort){
-	print "Rearranging RE's...\t" if $verbose;
-	sortRegexOnFile();
-	print "Done\n" if $verbose;
-}
+report();
+sortRegexOnFile() if $sort;
+# Close log file
+close($log);
