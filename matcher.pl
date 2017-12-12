@@ -114,7 +114,11 @@ sub report{
 	} else { $width = `tput cols`; } # Linux / MacOS
 
 	$unmatchSize = (@unmatch);
-	$output eq '' ? print "\n===== Results =============================\n" : print $outputHandler "===== Results =============================\n";
+	if ($output eq ''){
+		print "\n===== Results =============================\n";
+	} else {
+		print $outputHandler "===== Results =============================\n";
+	}
 	report_stats($width, $height);
 
 	report_unmatches() if ($u > -1);
@@ -155,69 +159,134 @@ sub report_stats{
 		$time_finish = Time::HiRes::time();
 		$time_execution =  sprintf("%0.3f",($time_finish - $time_init));
 		my $time_opening = sprintf("%0.3f",($time_openfile - $time_init));
-		$output eq '' ? print "\nTime reading the file:\t$time_opening seconds" : print $outputHandler "\nTime reading the file:\t$time_opening seconds";
-		$output eq '' ? print "\nTime used on execution:\t$time_execution seconds\n" : print $outputHandler "\nTime used on execution:\t$time_execution seconds\n";
+		if ($output eq ''){
+			print "\nTime reading the file:\t$time_opening seconds";
+			print "\nTime used on execution:\t$time_execution seconds\n";
+		} else {
+			print $outputHandler "\nTime reading the file:\t$time_opening seconds";
+			print $outputHandler "\nTime used on execution:\t$time_execution seconds\n";
+		}
 	}
 
 	# Resumee
 	my $total = $hits + $unmatchSize;
 	my $percentage = ($total eq 0 ? 0 : ($hits / $total) * 100);
 	$percentage = sprintf("%0.2f", $percentage);
-	if ($output eq ''){ 
-		$total eq 0 ? print "\nMatched log lines:\t0 ($percentage%)\n" : print "\nMatched log lines:\t$hits/$total ($percentage%)\n";
+	if ($output eq ''){
+		if ($total eq 0){
+			print "\nMatched log lines:\t0 ($percentage%)\n";
+		} else {
+			print "\nMatched log lines:\t$hits/$total ($percentage%)\n";
+		}
 	} else { 
-		$total eq 0 ? print $outputHandler "\nMatched log lines:\t0 ($percentage%)\n" : print $outputHandler "\nMatched log lines:\t$hits/$total ($percentage%)\n"; 
+		if ($total eq 0){
+			print $outputHandler "\nMatched log lines:\t0 ($percentage%)\n";
+		} else {
+			print $outputHandler "\nMatched log lines:\t$hits/$total ($percentage%)\n"; 
+		}
 	}
-	if ($unmatchSize > 0){ $output eq '' ? print "Unmatched lines:\t$unmatchSize\n" : print $outputHandler "Unmatched lines:\t$unmatchSize\n"; }
+	if ($unmatchSize > 0){ 
+		if ($output eq ''){
+			print "Unmatched lines:\t$unmatchSize\n";
+		} else {
+			print $outputHandler "Unmatched lines:\t$unmatchSize\n"; 
+		}
+	}
 }
 
 sub report_unmatches{
 	if ($u == 0 || $u > $unmatchSize){
-		$output eq '' ? print "\n===== Unmatched lines (all) ===================\n" : print $outputHandler "\n===== Unmatched lines (all) ===================\n";
+		if ($output eq ''){
+			print "\n===== Unmatched lines (all) ===================\n";
+		} else {
+			print $outputHandler "\n===== Unmatched lines (all) ===================\n";
+		}
 		foreach my $unm (@unmatch){ $output eq '' ? print "$unm\n" : print $outputHandler "$unm\n"; }
 	} else {
-		$output eq '' ? print "\n===== Unmatched lines (" . $u . ") =================\n" : print $outputHandler "\n===== Unmatched lines (" . $u . ") =================\n";
-		for my $firsts (0 .. $u-1) { $output eq '' ? print "$unmatch[$firsts]\n" : print $outputHandler "$unmatch[$firsts]\n"; }
+		if ($output eq ''){
+			print "\n===== Unmatched lines (" . $u . ") =================\n";
+		} else {
+			print $outputHandler "\n===== Unmatched lines (" . $u . ") =================\n";
+		}
+		for my $firsts (0 .. $u-1) { 
+			$output eq '' ? print "$unmatch[$firsts]\n" : print $outputHandler "$unmatch[$firsts]\n"; 
+		}
 	}
 }
 
 sub report_detailed{
-	$output eq '' ? print "\n===== Detailed matches ====================\n" : print $outputHandler "\n===== Detailed matches ====================\n";
+	if ($output eq ''){
+		print "\n===== Detailed matches ====================\n";
+	} else {
+		print $outputHandler "\n===== Detailed matches ====================\n";
+	}
 	my ($firstTheoricalPrint, $firstPrint) = (0) x2; 
 	foreach my $key (sort {$matcher{$b} <=> $matcher{$a}} keys %matcher){
 		if ($matcher{$key} > 0) {
-			if ($output eq ''){   print "-------------------------------------------\n" if ($firstPrint != 0); } 
-			else { print $outputHandler "-------------------------------------------\n" if ($firstPrint != 0); }
-			
+			if ($output eq ''){ 
+				print "-------------------------------------------\n" if ($firstPrint != 0); 
+			} else { 
+				if ($firstPrint != 0) {
+					print $outputHandler "-------------------------------------------\n"; 
+				}
+			}			
 			my $regex = $key;
 			my $example = $detailedOutput{$regex};
 			$firstTheoricalPrint++;
 			my @groups = $example =~ m/$regex/;
 			my $totalGroups = $#+;
 			if ($totalGroups > 0){
-				$output eq '' ? print "Regex => $regex\nExample => $example\n\n" : print $outputHandler "Regex => $regex\nExample => $example\n\n";
+				if ($output eq ''){
+					print "Regex => $regex\nExample => $example\n\n";
+				} else {
+					print $outputHandler "Regex => $regex\nExample => $example\n\n";
+				}
 				foreach my $pos (0 .. $totalGroups-1){ 
-					$output eq '' ? print "Group " . ($pos+1) . " => " . $groups[$pos] . "\n" : print $outputHandler "Group " . ($pos+1) . " => " . $groups[$pos] . "\n";
+					if ($output eq ''){
+						print "Group ".($pos+1)." => ".$groups[$pos]."\n";
+					} else {
+						print $outputHandler "Group ".($pos+1)." => ".$groups[$pos]."\n";
+					}
 				}
 				$firstPrint++;
 			}
 		}
 	}
 	if ($firstPrint == 0){
-		if ($firstTheoricalPrint > 0) { $output eq '' ? print "Your regexs don't have any capture group!\n" : print $outputHandler "Your regexs don't have any capture group!\n"; }
-		else { $output eq '' ? print "There is no matches with your regex!\n" : print $outputHandler "There is no matches with your regex!\n"; }
+		if ($firstTheoricalPrint > 0) { 
+			if ($output eq ''){
+				print "Your regexs don't have any capture group!\n";
+			} else {
+				print $outputHandler "Your regexs don't have any capture group!\n";
+			}
+		} else { 
+			if ($output eq ''){
+				print "There is no matches with your regex!\n";
+			} else {
+				print $outputHandler "There is no matches with your regex!\n";
+			}
+		}
 	}
 }
 
 sub report_arcsight{
-	$output eq '' ? print "\n===== Arcsight Regex Format ===============\n" : print $outputHandler "\n===== Arcsight Regex Format ===============\n";
+	if ($output eq ''){
+		print "\n===== Arcsight Regex Format ===============\n";
+	} else {
+		print $outputHandler "\n===== Arcsight Regex Format ===============\n";
+	}
 	my $arcsightCounter = 1;
 	foreach my $key (sort {$matcher{$b} <=> $matcher{$a}} keys %matcher){
 		if ($matcher{$key} > 0){
 			my $regex = $key;
 			$regex =~ s/\\/\\\\/g;
-			$output eq '' ? print "Regex #" . $arcsightCounter . ":\n" : print $outputHandler "Regex #" . $arcsightCounter . ":\n";
-			$output eq '' ? print "$regex\n" : print $outputHandler "$regex\n";
+			if ($output eq ''){
+				print "Regex #" . $arcsightCounter . ":\n";
+				print "$regex\n";
+			} else {
+				print $outputHandler "Regex #" . $arcsightCounter . ":\n";
+				print $outputHandler "$regex\n";
+			}
 			$arcsightCounter++;
 		}
 	}
@@ -265,7 +334,10 @@ if ($regexFile){
 		$regexFile = $customRegexPath;
 	} else {
 		# Use default regex file. If doesn't exists, the program dies
-		print "[WARN] Custom regex file $customRegexPath doesn't exist. Trying to use default regex file...\n" if $verbose;
+		if ($verbose){
+			print "[WARN] Custom regex file $customRegexPath doesn't exist. ";
+			print "Trying to use default regex file...\n";
+		}		
 		my $defaultRegexFile = path($currentPath . "/regex.txt");
 		die "Default regex file doesn't exist"  if ! (-e $defaultRegexFile);
 		die "Default regex file cannot be read" if ! (-r $defaultRegexFile);
@@ -288,7 +360,10 @@ if ($logFile){
 		$logFile = $customLogPath;
 	} else {
 		# Use default regex file. If doesn't exists, the program dies
-		print "[WARN] Custom log file $customLogPath doesn't exist. Trying to use default log file...\n" if $verbose;
+		if ($verbose){
+			print "[WARN] Custom log file $customLogPath doesn't exist. ";
+			print "Trying to use default log file...\n";
+		}
 		my $defaultLogFile = path($currentPath . "/log.txt");
 		die "Default log file doesn't exist"  if ! (-e $defaultLogFile);
 		die "Default log file cannot be read" if ! (-r $defaultLogFile);
@@ -312,7 +387,9 @@ while (my $line = <$log>){
 		if ($line =~ m/$checking/){
 			$matcher{$checking}++;
 			$match++;
-			if ($detailed and ! (exists $detailedOutput{$checking})){ $detailedOutput{$checking} = $line; }
+			if ($detailed and ! (exists $detailedOutput{$checking})){ 
+				$detailedOutput{$checking} = $line; 
+			}
 		} else { $elem++; }
 	}
 	if ($elem == $elems){ push @unmatch, $line; }
