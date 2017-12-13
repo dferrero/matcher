@@ -1,4 +1,7 @@
 #!/usr/bin/perl
+
+# TODO: Review all time variables
+
 use strict;
 use warnings;
 use autodie;
@@ -14,7 +17,8 @@ my $customRegexPath = '';
 
 # === Variables ===
 my $time_init = Time::HiRes::time();
-my ($time_openfile, $time_execution, $time_finish) = ('') x3;
+my ($time_aux_start, $time_aux_end) = ('') x2;
+my (@time_openingFiles, @time_executing) = () x2;
 my ($regexFile, $logFileName, $output) = ('') x3;
 my ($help, $verbose, $test, $arcsight, $detailed, $sort, $forceAll) = (0) x7;
 my $u = -1;
@@ -61,7 +65,11 @@ print "
 # Interaction with files
 sub readRegexFile {
 	print "Reading regex file...\t" if $verbose;
+	$time_aux_start = Time::HiRes::time();
 	open (my $file, '<:encoding(UTF-8)', $regexFile) or die "Could not open file '$regexFile'";
+	$time_aux_end = Time::HiRes::time();
+	push @time_opening, ($time_aux_end - $time_aux_start);
+	$time_aux_start = Time::HiRes::time();
 	my $letter = '';
 	my ($total_re, $duplicates) = (0) x2;
 	while (my $regex = <$file>){
@@ -80,6 +88,8 @@ sub readRegexFile {
 
 		}
 	}
+	$time_aux_end = Time::HiRes::time();
+	push @time_executing, ($time_aux_end - $time_aux_start);
 	if ($verbose) { $duplicates eq 0 ? print "Done\n" : print "Total duplicates: $duplicates\n\n"; }
 	die "Regex file is empty" if ($total_re eq 0);
 	close($file);
@@ -88,11 +98,66 @@ sub readRegexFile {
 # Tests
 sub testRegex{
 	print "Checking regex syntax\n" if $verbose;
+	$time_aux_start = Time::HiRes::time();
 	foreach my $testing (@re){
 		my $res = eval { qr/$testing/ };
 		die "Invalid regex syntax on $@" if $@;
 	}
+	$time_aux_end = Time::HiRes::time();
+	push @time_opening, ($time_aux_end - $time_aux_start);
 	print "All regex have been checked. Syntax is correct.\n" if $verbose;
+}
+
+sub processLog{
+	my $logFile = @_;
+	print "$logFile\n";
+	# Check log path and open it
+	die "[$logFile]\tLog is not a file"  if ! (-f $logFile);
+	die "[$logFile]\tLog file doesn't exist"  if ! (-e $logFile);
+	die "[$logFile]\tLog file cannot be read" if ! (-r $logFile);
+
+	print "[$logFile] Reading log file...\t" if $verbose;
+	open (my $log, '<:encoding(UTF-8)', $logFile) or die "Could not open log file '$logFile'";
+	print "Done\n" if $verbose;
+	$time_openfile = Time::HiRes::time();
+	# Test all log against regex(s)
+	my $elems = (@re);
+	my $checking = "";
+	while (my $line = <$log>){
+		my ($match, $elem) = (0) x 2;
+		chomp $line;
+		if ($forceAll){ # Check against all regex
+			while ($elem < $elems){
+				$checking = $re[$elem];
+				chomp $checking;
+				if ($line =~ m/$checking/){
+					$matcher{$checking}++;
+					$globalHits++ if ($match eq 0);
+					$match++;
+					if ($detailed and ! (exists $detailedOutput{$checking})){ 
+						$detailedOutput{$checking} = $line; 
+					}
+				} 
+				$elem++;
+			}
+		} else { # Check until a match is found
+			while (! $match and ($elem < $elems)){
+				$checking = $re[$elem];
+				chomp $checking;
+				if ($line =~ m/$checking/){
+					$matcher{$checking}++;
+					$match++;
+					$globalHits++;
+					if ($detailed and ! (exists $detailedOutput{$checking})){ 
+						$detailedOutput{$checking} = $line; 
+					}
+				} else { $elem++; }
+			}
+		}
+		if ($elem == $elems and $match eq 0){ push @unmatch, $line; }
+	}
+	# Close log file
+	close($log);
 }
 
 # Report subs
@@ -151,7 +216,7 @@ sub report_stats{
 	}
 	# Time used
 	if ($verbose){
-		$time_finish = Time::HiRes::time();
+		my $time_finish = Time::HiRes::time();
 		$time_execution =  sprintf("%0.3f",($time_finish - $time_init));
 		my $time_opening = sprintf("%0.3f",($time_openfile - $time_init));
 		if ($output eq ''){
@@ -343,76 +408,29 @@ if ($regexFile){
 readRegexFile();
 testRegex() if $test;
 
-my @files = glob($logFileName);
-for my $logFile (@files) {
-	print "$logFile\n";
-	# Check log path and open it
-	if ($logFile){
-		die "[$logFile]\tLog is not a file"  if ! (-f $logFile);
-		die "[$logFile]\tLog file doesn't exist"  if ! (-e $logFile);
-		die "[$logFile]\tLog file cannot be read" if ! (-r $logFile);
+$time_aux_start = Time:
+if ($logFileName){
+	my @files = glob($logFileName);
+	for my $logFile (@files) { processLog($logFile); } 
+} else {
+	# Testing custom log file path
+	# If doesn't exist, it will try to use default file or the script will die
+	if (-e $customLogPath){
+		die "Custom log file cannot be read" if ! (-r $customLogPath);
+		$logFile = $customLogPath;
 	} else {
-		# Testing custom log file path
-		# If doesn't exist, it will try to use default file or the script will die
-		if (-e $customLogPath){
-			die "Custom log file cannot be read" if ! (-r $customLogPath);
-			$logFile = $customLogPath;
-		} else {
-			# Use default regex file. If doesn't exists, the program dies
-			if ($verbose){
-				print "[WARN] Custom log file $customLogPath doesn't exist. ";
-				print "Trying to use default log file...\n";
-			}
-			my $defaultLogFile = path($currentPath . "/log.txt");
-			die "Default log file doesn't exist"  if ! (-e $defaultLogFile);
-			die "Default log file cannot be read" if ! (-r $defaultLogFile);
-			$logFile = $defaultLogFile;
+		# Use default regex file. If doesn't exists, the program dies
+		if ($verbose){
+			print "[WARN] Custom log file $customLogPath doesn't exist. ";
+			print "Trying to use default log file...\n";
 		}
+		my $defaultLogFile = path($currentPath . "/log.txt");
+		die "Default log file doesn't exist"  if ! (-e $defaultLogFile);
+		die "Default log file cannot be read" if ! (-r $defaultLogFile);
+		$logFile = $defaultLogFile;
 	}
-
-	print "Reading log file...\t" if $verbose;
-	open (my $log, '<:encoding(UTF-8)', $logFile) or die "Could not open log file '$logFile'";
-	print "Done\n" if $verbose;
-	$time_openfile = Time::HiRes::time();
-	# Test all log against regex(s)
-	my $elems = (@re);
-	my $checking = "";
-	while (my $line = <$log>){
-		my ($match, $elem) = (0) x 2;
-		chomp $line;
-		if ($forceAll){ # Check against all regex
-			while ($elem < $elems){
-				$checking = $re[$elem];
-				chomp $checking;
-				if ($line =~ m/$checking/){
-					$matcher{$checking}++;
-					$globalHits++ if ($match eq 0);
-					$match++;
-					if ($detailed and ! (exists $detailedOutput{$checking})){ 
-						$detailedOutput{$checking} = $line; 
-					}
-				} 
-				$elem++;
-			}
-		} else { # Check until a match is found
-			while (! $match and ($elem < $elems)){
-				$checking = $re[$elem];
-				chomp $checking;
-				if ($line =~ m/$checking/){
-					$matcher{$checking}++;
-					$match++;
-					$globalHits++;
-					if ($detailed and ! (exists $detailedOutput{$checking})){ 
-						$detailedOutput{$checking} = $line; 
-					}
-				} else { $elem++; }
-			}
-		}
-		if ($elem == $elems and $match eq 0){ push @unmatch, $line; }
-	}
-	# Close log file
-	close($log);
-} # For all files
+	processLog($logFile);
+}
 
 # Show report
 report();
