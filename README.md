@@ -35,6 +35,7 @@ Regular expressions stored on regex file must be declared one per line. Comments
 
 - [x] ~~Option `-s` to update regex file and rearrange regex order for better performance~~
 - [x] ~~Get output redirected to a file instead of screen~~
+- [ ] Option `-C` to get only group matches. Formats: differents files/specific delimiter (using secondary option)
 - [ ] Test against multiple file logs
 - [ ] Daemon mode (monitoring one or more files to get unmatches and/or reports)
 - [ ] Improve performance
