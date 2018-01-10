@@ -16,9 +16,7 @@ my $customLogPath = '';
 my $customRegexPath = '';
 
 # === Variables ===
-my $time_init = Time::HiRes::time();
-my ($time_aux_start, $time_aux_end) = ('') x2;
-my (@time_openingFiles, @time_executing) = () x2;
+my $time_start = Time::HiRes::time();
 my ($regexFile, $logFileName, $output) = ('') x3;
 my ($help, $verbose, $test, $arcsight, $detailed, $sort, $forceAll) = (0) x7;
 my $u = -1;
@@ -65,11 +63,7 @@ print "
 # Interaction with files
 sub readRegexFile {
 	print "Reading regex file...\t" if $verbose;
-	$time_aux_start = Time::HiRes::time();
 	open (my $file, '<:encoding(UTF-8)', $regexFile) or die "Could not open file '$regexFile'";
-	$time_aux_end = Time::HiRes::time();
-	push @time_opening, ($time_aux_end - $time_aux_start);
-	$time_aux_start = Time::HiRes::time();
 	my $letter = '';
 	my ($total_re, $duplicates) = (0) x2;
 	while (my $regex = <$file>){
@@ -88,8 +82,6 @@ sub readRegexFile {
 
 		}
 	}
-	$time_aux_end = Time::HiRes::time();
-	push @time_executing, ($time_aux_end - $time_aux_start);
 	if ($verbose) { $duplicates eq 0 ? print "Done\n" : print "Total duplicates: $duplicates\n\n"; }
 	die "Regex file is empty" if ($total_re eq 0);
 	close($file);
@@ -98,13 +90,10 @@ sub readRegexFile {
 # Tests
 sub testRegex{
 	print "Checking regex syntax\n" if $verbose;
-	$time_aux_start = Time::HiRes::time();
 	foreach my $testing (@re){
 		my $res = eval { qr/$testing/ };
 		die "Invalid regex syntax on $@" if $@;
 	}
-	$time_aux_end = Time::HiRes::time();
-	push @time_opening, ($time_aux_end - $time_aux_start);
 	print "All regex have been checked. Syntax is correct.\n" if $verbose;
 }
 
@@ -119,7 +108,6 @@ sub processLog{
 	print "[$logFile] Reading log file...\t" if $verbose;
 	open (my $log, '<:encoding(UTF-8)', $logFile) or die "Could not open log file '$logFile'";
 	print "Done\n" if $verbose;
-	$time_openfile = Time::HiRes::time();
 	# Test all log against regex(s)
 	my $elems = (@re);
 	my $checking = "";
@@ -216,15 +204,12 @@ sub report_stats{
 	}
 	# Time used
 	if ($verbose){
-		my $time_finish = Time::HiRes::time();
-		$time_execution =  sprintf("%0.3f",($time_finish - $time_init));
-		my $time_opening = sprintf("%0.3f",($time_openfile - $time_init));
+		my $time_finish = sprintf("%0.3f",(Time::HiRes::time() - $time_start));
+#		$time_execution =  sprintf("%0.3f",($time_finish - $time_start));
 		if ($output eq ''){
-			print "\nTime reading the file:\t$time_opening seconds";
-			print "\nTime used on execution:\t$time_execution seconds\n";
+			print "\nTotal time:\t$time_finish seconds\n";
 		} else {
-			print $outputHandler "\nTime reading the file:\t$time_opening seconds";
-			print $outputHandler "\nTime used on execution:\t$time_execution seconds\n";
+			print $outputHandler "\nTotal time:\t$time_finish seconds\n";
 		}
 	}
 
@@ -408,7 +393,7 @@ if ($regexFile){
 readRegexFile();
 testRegex() if $test;
 
-$time_aux_start = Time:
+# Processing multiple files
 if ($logFileName){
 	my @files = glob($logFileName);
 	for my $logFile (@files) { processLog($logFile); } 
@@ -417,7 +402,7 @@ if ($logFileName){
 	# If doesn't exist, it will try to use default file or the script will die
 	if (-e $customLogPath){
 		die "Custom log file cannot be read" if ! (-r $customLogPath);
-		$logFile = $customLogPath;
+		$logFileName = $customLogPath; # It was $logFile
 	} else {
 		# Use default regex file. If doesn't exists, the program dies
 		if ($verbose){
@@ -427,9 +412,9 @@ if ($logFileName){
 		my $defaultLogFile = path($currentPath . "/log.txt");
 		die "Default log file doesn't exist"  if ! (-e $defaultLogFile);
 		die "Default log file cannot be read" if ! (-r $defaultLogFile);
-		$logFile = $defaultLogFile;
+		$logFileName = $defaultLogFile; # It was $logFile
 	}
-	processLog($logFile);
+	processLog($logFileName);
 }
 
 # Show report
