@@ -19,7 +19,7 @@ This list includes all available parameters which can be used with the script. I
 -F              Test log against all regex, even if a match is found
 -u [number]     Print first N unmatched lines. If no number is specified, it will print all
 -A              Print all regex in Arcsight format
--s              Sort all regex. All comments and empty will be removed
+-s              Sort all regex. All comments and empty lines will be removed
 -o <filename>   Get output redirected to a file instead of screen
 ```
 
@@ -36,6 +36,7 @@ Regular expressions stored on regex file must be declared one per line. Comments
 - [x] ~~Option `-s` to update regex file and rearrange regex order for better performance~~
 - [x] ~~Get output redirected to a file instead of screen~~
 - [ ] Option `-C` to get only group matches. Formats: differents files/specific delimiter (using secondary option)
+- [ ] Secondary regex file to ignore lines who matches from log on report
 - [ ] Test against multiple file logs
 - [ ] Daemon mode (monitoring one or more files to get unmatches and/or reports)
 - [ ] Improve performance
