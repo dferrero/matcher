@@ -14,7 +14,7 @@ my $customRegexPath = '';
 
 # === Variables ===
 my $time_initialize = Time::HiRes::time();
-my ($regexFile, $logFile, $output) = ('') x3;
+my ($regexFile, $logFile, $output, $formatFileOutput) = ('') x4;
 my ($help, $verbose, $test, $arcsight, $detailed, $sort, $forceAll) = (0) x7;
 my $u = -1;
 
@@ -49,6 +49,7 @@ sub help {
 	-A                Print all regex in Arcsight format
 	-s                Sort all regex. All comments and empty will be removed
 	-o <filename>     Get output redirected to a file instead of screen
+	-f <json|csv>     Get all hits on specified format files (one file per regex)
 	";
 	exit;
 }
@@ -304,10 +305,12 @@ GetOptions (
 	'A' => \$arcsight,
 	's' => \$sort,
 	'o=s' => \$output,
+	'f=s' => \$formatFileOutput
 	) or help();
 help() if $help; 
 print $banner if (!$output);
 die "Number of unmatched lines must be a non negative number" if (!($u == -1) && ($u < -1));
+die "Format type not valid. Must be json or csv" if (!$formatFileOutput =~ /json|csv/i); # This check is not working
 
 my $currentPath = cwd();
 # Test custom regex file
@@ -378,7 +381,7 @@ while (my $line = <$log>){
 					$matcher{$checking}++;
 					$globalHits++ if ($match eq 0);
 					$match++;
-					if ($detailed and ! (exists $detailedOutput{$checking})){ 
+					if ($detailed and ! (exists $detailedOutput{$checking})){
 						$detailedOutput{$checking} = $line; 
 					}
 				} 
@@ -392,7 +395,7 @@ while (my $line = <$log>){
 					$matcher{$checking}++;
 					$match++;
 					$globalHits++;
-					if ($detailed and ! (exists $detailedOutput{$checking})){ 
+					if ($detailed and ! (exists $detailedOutput{$checking})){
 						$detailedOutput{$checking} = $line; 
 					}
 				} else { $elem++; }

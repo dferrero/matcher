@@ -21,6 +21,7 @@ This list includes all available parameters which can be used with the script. I
 -A              Print all regex in Arcsight format
 -s              Sort all regex. All comments and empty lines will be removed
 -o <filename>   Get output redirected to a file instead of screen
+-f <json|csv>   Get all hits on specified format files (one file per regex)
 ```
 
 If the script is used without log or regex file, it will try to use the custom option. If no custom file has been set, it will try to use the default ones `log.txt` and `regex.txt`. If no one exist, the script will finish.
