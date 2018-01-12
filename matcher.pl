@@ -1,7 +1,4 @@
 #!/usr/bin/perl
-
-# TODO: Review all time variables
-
 use strict;
 use warnings;
 use autodie;
@@ -16,10 +13,8 @@ my $customLogPath = '';
 my $customRegexPath = '';
 
 # === Variables ===
-my $time_init = Time::HiRes::time();
-my ($time_aux_start, $time_aux_end) = ('') x2;
-my (@time_openingFiles, @time_executing) = () x2;
-my ($regexFile, $logFileName, $output) = ('') x3;
+my $time_initialize = Time::HiRes::time();
+my ($regexFile, $logFile, $output) = ('') x3;
 my ($help, $verbose, $test, $arcsight, $detailed, $sort, $forceAll) = (0) x7;
 my $u = -1;
 
@@ -29,6 +24,14 @@ my (%matcher, %detailedOutput, %regexFiles) = () x3;
 # Global variables
 our ($unmatchSize, $globalHits, $total) = (0) x3;
 our $outputHandler;
+
+my $banner="   _____          __         .__                  
+  /     \\ _____ _/  |_  ____ |  |__   ___________ 
+ /  \\ /  \\\\__  \\\\   __\\/ ___\\|  |  \\_/ __ \\_  __ \\
+/    Y    \\/ __ \\|  | \\  \\___|   Y  \\  ___/|  | \\/
+\\____|__  (____  /__|  \\___  >___|  /\\___  >__|   
+        \\/     \\/          \\/     \\/     \\/       
+   Author: \@dferrero	Version: 0.1\n\n";
 
 # === Subs ===
 # Help message
@@ -50,26 +53,10 @@ sub help {
 	exit;
 }
 
-# Starting message
-sub logo{
-print "
-   _____          __         .__                  
-  /     \\ _____ _/  |_  ____ |  |__   ___________ 
- /  \\ /  \\\\__  \\\\   __\\/ ___\\|  |  \\_/ __ \\_  __ \\
-/    Y    \\/ __ \\|  | \\  \\___|   Y  \\  ___/|  | \\/
-\\____|__  (____  /__|  \\___  >___|  /\\___  >__|   
-        \\/     \\/          \\/     \\/     \\/       
-   Author: \@dferrero	Version: 0.1\n\n";
-}
-
 # Interaction with files
 sub readRegexFile {
 	print "Reading regex file...\t" if $verbose;
-	$time_aux_start = Time::HiRes::time();
 	open (my $file, '<:encoding(UTF-8)', $regexFile) or die "Could not open file '$regexFile'";
-	$time_aux_end = Time::HiRes::time();
-	push @time_opening, ($time_aux_end - $time_aux_start);
-	$time_aux_start = Time::HiRes::time();
 	my $letter = '';
 	my ($total_re, $duplicates) = (0) x2;
 	while (my $regex = <$file>){
@@ -88,8 +75,6 @@ sub readRegexFile {
 
 		}
 	}
-	$time_aux_end = Time::HiRes::time();
-	push @time_executing, ($time_aux_end - $time_aux_start);
 	if ($verbose) { $duplicates eq 0 ? print "Done\n" : print "Total duplicates: $duplicates\n\n"; }
 	die "Regex file is empty" if ($total_re eq 0);
 	close($file);
@@ -98,72 +83,18 @@ sub readRegexFile {
 # Tests
 sub testRegex{
 	print "Checking regex syntax\n" if $verbose;
-	$time_aux_start = Time::HiRes::time();
 	foreach my $testing (@re){
 		my $res = eval { qr/$testing/ };
 		die "Invalid regex syntax on $@" if $@;
 	}
-	$time_aux_end = Time::HiRes::time();
-	push @time_opening, ($time_aux_end - $time_aux_start);
 	print "All regex have been checked. Syntax is correct.\n" if $verbose;
-}
-
-sub processLog{
-	my $logFile = @_;
-	print "$logFile\n";
-	# Check log path and open it
-	die "[$logFile]\tLog is not a file"  if ! (-f $logFile);
-	die "[$logFile]\tLog file doesn't exist"  if ! (-e $logFile);
-	die "[$logFile]\tLog file cannot be read" if ! (-r $logFile);
-
-	print "[$logFile] Reading log file...\t" if $verbose;
-	open (my $log, '<:encoding(UTF-8)', $logFile) or die "Could not open log file '$logFile'";
-	print "Done\n" if $verbose;
-	$time_openfile = Time::HiRes::time();
-	# Test all log against regex(s)
-	my $elems = (@re);
-	my $checking = "";
-	while (my $line = <$log>){
-		my ($match, $elem) = (0) x 2;
-		chomp $line;
-		if ($forceAll){ # Check against all regex
-			while ($elem < $elems){
-				$checking = $re[$elem];
-				chomp $checking;
-				if ($line =~ m/$checking/){
-					$matcher{$checking}++;
-					$globalHits++ if ($match eq 0);
-					$match++;
-					if ($detailed and ! (exists $detailedOutput{$checking})){ 
-						$detailedOutput{$checking} = $line; 
-					}
-				} 
-				$elem++;
-			}
-		} else { # Check until a match is found
-			while (! $match and ($elem < $elems)){
-				$checking = $re[$elem];
-				chomp $checking;
-				if ($line =~ m/$checking/){
-					$matcher{$checking}++;
-					$match++;
-					$globalHits++;
-					if ($detailed and ! (exists $detailedOutput{$checking})){ 
-						$detailedOutput{$checking} = $line; 
-					}
-				} else { $elem++; }
-			}
-		}
-		if ($elem == $elems and $match eq 0){ push @unmatch, $line; }
-	}
-	# Close log file
-	close($log);
 }
 
 # Report subs
 sub report{
 	if (!$output eq ''){
 		open ($outputHandler, '>:encoding(UTF-8)', $output) or die "Could not open file '$outputHandler'";
+		print $outputHandler $banner;
 	}
 	# Get window size
 	my ($width, $height) = (0) x2;
@@ -216,15 +147,12 @@ sub report_stats{
 	}
 	# Time used
 	if ($verbose){
-		my $time_finish = Time::HiRes::time();
-		$time_execution =  sprintf("%0.3f",($time_finish - $time_init));
-		my $time_opening = sprintf("%0.3f",($time_openfile - $time_init));
+		my $time_terminate = Time::HiRes::time();
+		my $time_used =  sprintf("%0.3f",($time_terminate - $time_initialize));
 		if ($output eq ''){
-			print "\nTime reading the file:\t$time_opening seconds";
-			print "\nTime used on execution:\t$time_execution seconds\n";
+			print "\nTime used on execution:\t$time_used seconds\n";
 		} else {
-			print $outputHandler "\nTime reading the file:\t$time_opening seconds";
-			print $outputHandler "\nTime used on execution:\t$time_execution seconds\n";
+			print $outputHandler "\nTime used on execution:\t$time_used seconds\n";
 		}
 	}
 
@@ -367,7 +295,7 @@ sub sortRegexOnFile{
 GetOptions (
 	'help|h|?' => \$help,
 	'v+' => \$verbose,
-	'l|log=s' => \$logFileName,
+	'l|log=s' => \$logFile,
 	'r=s' => \$regexFile,
 	'details|d' => \$detailed,
 	't' => \$test,
@@ -378,7 +306,7 @@ GetOptions (
 	'o=s' => \$output,
 	) or help();
 help() if $help; 
-logo();
+print $banner if (!$output);
 die "Number of unmatched lines must be a non negative number" if (!($u == -1) && ($u < -1));
 
 my $currentPath = cwd();
@@ -408,10 +336,11 @@ if ($regexFile){
 readRegexFile();
 testRegex() if $test;
 
-$time_aux_start = Time:
-if ($logFileName){
-	my @files = glob($logFileName);
-	for my $logFile (@files) { processLog($logFile); } 
+# Check log path and open it
+if ($logFile){
+	die "$logFile is not a file"  if ! (-f $logFile);
+	die "Log file doesn't exist"  if ! (-e $logFile);
+	die "Log file cannot be read" if ! (-r $logFile);
 } else {
 	# Testing custom log file path
 	# If doesn't exist, it will try to use default file or the script will die
@@ -429,9 +358,52 @@ if ($logFileName){
 		die "Default log file cannot be read" if ! (-r $defaultLogFile);
 		$logFile = $defaultLogFile;
 	}
-	processLog($logFile);
+}
+
+print "Reading log file...\t" if $verbose;
+open (my $log, '<:encoding(UTF-8)', $logFile) or die "Could not open log file '$logFile'";
+print "Done\n" if $verbose;
+# Test all log against regex(s)
+my $elems = (@re);
+my $checking = "";
+while (my $line = <$log>){
+	my ($match, $elem) = (0) x 2;
+	chomp $line;
+	if (!(length($line) eq 0)){
+		if ($forceAll){ # Check against all regex
+			while ($elem < $elems){
+				$checking = $re[$elem];
+				chomp $checking;
+				if ($line =~ m/$checking/){
+					$matcher{$checking}++;
+					$globalHits++ if ($match eq 0);
+					$match++;
+					if ($detailed and ! (exists $detailedOutput{$checking})){ 
+						$detailedOutput{$checking} = $line; 
+					}
+				} 
+				$elem++;
+			}
+		} else { # Check until a match is found
+			while (! $match and ($elem < $elems)){
+				$checking = $re[$elem];
+				chomp $checking;
+				if ($line =~ m/$checking/){
+					$matcher{$checking}++;
+					$match++;
+					$globalHits++;
+					if ($detailed and ! (exists $detailedOutput{$checking})){ 
+						$detailedOutput{$checking} = $line; 
+					}
+				} else { $elem++; }
+			}
+		}
+		if ($elem == $elems and $match eq 0){ push @unmatch, $line; }
+	}
 }
 
 # Show report
 report();
 sortRegexOnFile() if $sort;
+# Close log file
+close($log);
