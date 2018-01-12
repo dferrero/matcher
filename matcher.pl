@@ -25,6 +25,14 @@ my (%matcher, %detailedOutput, %regexFiles) = () x3;
 our ($unmatchSize, $globalHits, $total) = (0) x3;
 our $outputHandler;
 
+my $banner="   _____          __         .__                  
+  /     \\ _____ _/  |_  ____ |  |__   ___________ 
+ /  \\ /  \\\\__  \\\\   __\\/ ___\\|  |  \\_/ __ \\_  __ \\
+/    Y    \\/ __ \\|  | \\  \\___|   Y  \\  ___/|  | \\/
+\\____|__  (____  /__|  \\___  >___|  /\\___  >__|   
+        \\/     \\/          \\/     \\/     \\/       
+   Author: \@dferrero	Version: 0.1\n\n";
+
 # === Subs ===
 # Help message
 sub help {
@@ -43,18 +51,6 @@ sub help {
 	-o <filename>     Get output redirected to a file instead of screen
 	";
 	exit;
-}
-
-# Starting message
-sub logo{
-print "
-   _____          __         .__                  
-  /     \\ _____ _/  |_  ____ |  |__   ___________ 
- /  \\ /  \\\\__  \\\\   __\\/ ___\\|  |  \\_/ __ \\_  __ \\
-/    Y    \\/ __ \\|  | \\  \\___|   Y  \\  ___/|  | \\/
-\\____|__  (____  /__|  \\___  >___|  /\\___  >__|   
-        \\/     \\/          \\/     \\/     \\/       
-   Author: \@dferrero	Version: 0.1\n\n";
 }
 
 # Interaction with files
@@ -98,6 +94,7 @@ sub testRegex{
 sub report{
 	if (!$output eq ''){
 		open ($outputHandler, '>:encoding(UTF-8)', $output) or die "Could not open file '$outputHandler'";
+		print $outputHandler $banner;
 	}
 	# Get window size
 	my ($width, $height) = (0) x2;
@@ -309,7 +306,7 @@ GetOptions (
 	'o=s' => \$output,
 	) or help();
 help() if $help; 
-logo();
+print $banner if (!$output);
 die "Number of unmatched lines must be a non negative number" if (!($u == -1) && ($u < -1));
 
 my $currentPath = cwd();

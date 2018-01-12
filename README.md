@@ -14,7 +14,7 @@ This list includes all available parameters which can be used with the script. I
 -l, --log       Set log file to be checked against regexs
 -r              Set regex file where are stored all regex to test
 
--d, detailed    Print one example of every regex with a match in JSON
+-d, detailed    Print one example of every regex with a match
 -t              Test regex syntax. If anyone is incorrect, the script dies
 -F              Test log against all regex, even if a match is found
 -u [number]     Print first N unmatched lines. If no number is specified, it will print all
@@ -45,3 +45,4 @@ Regular expressions stored on regex file must be declared one per line. Comments
 - [ ] Daemon mode (monitoring one or more files to get unmatches and/or reports)
 - [ ] Improve performance
 - [ ] "Intelligent" print mode of regex results
+- [ ] Get output of all matches to JSON and CSV. Groups # should be changed to custom names for both formats.
