@@ -1,0 +1,14 @@
+# Windows
+cd C:\Strawberry\perl\bin
+
+perl.exe matcher\matcher.pl -h
+
+perl.exe matcher\matcher.pl -l i-dont-exist-file.log
+
+perl.exe matcher\matcher.pl -l matcher\test\ssh-examples.log -r matcher\test\ssh.re
+
+# Linux
+# TODO
+
+# TODO
+# Test using Test::Script (http://search.cpan.org/~plicease/Test-Script-1.23/lib/Test/Script.pm)
