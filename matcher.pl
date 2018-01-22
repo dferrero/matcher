@@ -314,7 +314,6 @@ GetOptions (
 help() if $help; 
 print $banner if (!$output);
 die "Number of unmatched lines must be a non negative number" if (!($u == -1) && ($u < -1));
-print "$formatFileOutput";
 die "Format type not valid. Must be json or csv" if ($formatFileOutput and !($formatFileOutput =~ /^json$|^csv$/i)); 
 
 my $currentPath = cwd();
@@ -428,14 +427,6 @@ while (my $line = <$log>){
 		if ($elem == $elems and $match eq 0){ push @unmatch, $line; }
 	}
 }
-
-print "DEBUGGING:\n";
-for my $i ( 0 .. $#allMatchRegister ) {
-    for my $j ( 0 .. $#{$allMatchRegister[$i]} ) {
-        print "element $i $j is $allMatchRegister[$i][$j]\n";
-    }
-}
-print "\n\n\n";
 
 # Show report
 report();
