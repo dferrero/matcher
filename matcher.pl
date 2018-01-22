@@ -82,7 +82,7 @@ sub readRegexFile {
 }
 
 # Tests
-sub testRegex{
+sub checkRegex{
 	print "Checking regex syntax\n" if $verbose;
 	foreach my $testing (@re){
 		my $res = eval { qr/$testing/ };
@@ -310,7 +310,7 @@ GetOptions (
 help() if $help; 
 print $banner if (!$output);
 die "Number of unmatched lines must be a non negative number" if (!($u == -1) && ($u < -1));
-die "Format type not valid. Must be json or csv" if (!$formatFileOutput =~ /json|csv/i); # This check is not working
+die "Format type not valid. Must be json or csv" if (!($formatFileOutput =~ /^json$|^csv$/i)); 
 
 my $currentPath = cwd();
 # Test custom regex file
@@ -337,7 +337,7 @@ if ($regexFile){
 	}
 }
 readRegexFile();
-testRegex() if $test;
+checkRegex() if $test;
 
 # Check log path and open it
 if ($logFile){
