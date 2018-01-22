@@ -4,7 +4,7 @@ use warnings;
 use autodie;
 
 use Path::Tiny;
-use Getopt::Long;
+use Getopt::Long qw(:config no_ignore_case);
 use Time::HiRes;
 use Cwd;
 
@@ -20,6 +20,10 @@ my $u = -1;
 
 my (@re, @unmatch) = () x2;
 my (%matcher, %detailedOutput, %regexFiles) = () x3;
+
+our $currentIndex = 0;
+our %indexMatchRegister =  ();
+our @allMatchRegister = (); # $allMatchRegister[x][0] is always the matcher regex
 
 # Global variables
 our ($unmatchSize, $globalHits, $total) = (0) x3;
@@ -310,7 +314,8 @@ GetOptions (
 help() if $help; 
 print $banner if (!$output);
 die "Number of unmatched lines must be a non negative number" if (!($u == -1) && ($u < -1));
-die "Format type not valid. Must be json or csv" if (!($formatFileOutput =~ /^json$|^csv$/i)); 
+print "$formatFileOutput";
+die "Format type not valid. Must be json or csv" if ($formatFileOutput and !($formatFileOutput =~ /^json$|^csv$/i)); 
 
 my $currentPath = cwd();
 # Test custom regex file
@@ -381,6 +386,15 @@ while (my $line = <$log>){
 					$matcher{$checking}++;
 					$globalHits++ if ($match eq 0);
 					$match++;
+					if (!(exists $indexMatchRegister{$checking})){ # Doesn't exist yet @ index
+						 $indexMatchRegister{$checking} = $currentIndex;
+						 $allMatchRegister[$currentIndex][0] = $checking;
+						 $allMatchRegister[$currentIndex][1] = $line;
+						 $currentIndex++;
+					} else {
+						push @{ $allMatchRegister[$indexMatchRegister{$checking}] }, $line;
+					}
+					# Temporary; will be removed when all matches array is finished
 					if ($detailed and ! (exists $detailedOutput{$checking})){
 						$detailedOutput{$checking} = $line; 
 					}
@@ -395,6 +409,16 @@ while (my $line = <$log>){
 					$matcher{$checking}++;
 					$match++;
 					$globalHits++;
+					if (!(exists $indexMatchRegister{$checking})){ # Doesn't exist yet @ index
+						 $indexMatchRegister{$checking} = $currentIndex;
+						 $allMatchRegister[$currentIndex][0] = $checking;
+						 $allMatchRegister[$currentIndex][1] = $line;
+						 $currentIndex++;
+					} else {
+						my $index = $indexMatchRegister{$checking};
+						push @{ $allMatchRegister[$index] }, $line;
+					}
+					# Temporary; will be removed when all matches array is finished
 					if ($detailed and ! (exists $detailedOutput{$checking})){
 						$detailedOutput{$checking} = $line; 
 					}
@@ -404,6 +428,14 @@ while (my $line = <$log>){
 		if ($elem == $elems and $match eq 0){ push @unmatch, $line; }
 	}
 }
+
+print "DEBUGGING:\n";
+for my $i ( 0 .. $#allMatchRegister ) {
+    for my $j ( 0 .. $#{$allMatchRegister[$i]} ) {
+        print "element $i $j is $allMatchRegister[$i][$j]\n";
+    }
+}
+print "\n\n\n";
 
 # Show report
 report();
