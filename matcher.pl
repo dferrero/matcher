@@ -7,6 +7,7 @@ use Path::Tiny;
 use Getopt::Long qw(:config no_ignore_case);
 use Time::HiRes;
 use Cwd;
+use JSON;
 
 # Custom variables
 my $customLogPath = ''; 
@@ -21,9 +22,9 @@ my $u = -1;
 my (@re, @unmatch) = () x2;
 my (%matcher, %detailedOutput, %regexFiles) = () x3;
 
-our $currentIndex = 0;
-our %indexMatchRegister =  ();
-our @allMatchRegister = (); # $allMatchRegister[x][0] is always the matcher regex
+my $currentIndex = 0;
+my %indexMatchRegister =  ();
+my @allMatchRegister = (); 		# $allMatchRegister[x][0] is always the matcher regex
 
 # Global variables
 our ($unmatchSize, $globalHits, $total) = (0) x3;
@@ -433,3 +434,20 @@ report();
 sortRegexOnFile() if $sort;
 # Close log file
 close($log);
+
+# DEBUGGING
+my %currentRow = ();
+my $currentRegex = '';
+my @currentHits = ();
+my @allJSON = ();
+for my $row ( 0 .. $#allMatchRegister ) {
+	$currentRegex = $allMatchRegister[$row][0];
+	@currentHits = ();
+	for my $column ( 1 .. $#{$allMatchRegister[$row]} ) {
+		push @currentHits, $allMatchRegister[$row][$column];
+	}
+	my %currentRow = ('regex'=>$currentRegex, 'hits'=>($#currentHits + 1),'matches'=>[@currentHits]);
+	my $pretty = JSON->new->pretty->canonical->encode(\%currentRow);
+	push @allJSON, from_json($pretty);
+}
+#print JSON->new->pretty->canonical->encode(\@allJSON);
