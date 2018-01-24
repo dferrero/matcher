@@ -15,7 +15,7 @@ my $customRegexPath = '';
 
 # === Variables ===
 my $time_initialize = Time::HiRes::time();
-my ($regexFile, $logFile, $output, $formatFileOutput) = ('') x4;
+my ($regexFile, $logFile, $output, $jsonOpt) = ('') x4;
 my ($help, $verbose, $test, $arcsight, $detailed, $sort, $forceAll) = (0) x7;
 my $u = -1;
 
@@ -54,7 +54,7 @@ sub help {
 	-A                Print all regex in Arcsight format
 	-s                Sort all regex. All comments and empty will be removed
 	-o <filename>     Get output redirected to a file instead of screen
-	-f <json|csv>     Get all hits on specified format files (one file per regex)
+	-j                Get all hits on JSON format
 	";
 	exit;
 }
@@ -94,6 +94,24 @@ sub checkRegex{
 		die "Invalid regex syntax on $@" if $@;
 	}
 	print "All regex have been checked. Syntax is correct.\n" if $verbose;
+}
+
+sub jsonOutput{
+	my %currentRow = ();
+	my $currentRegex = '';
+	my @currentHits = ();
+	my @allJSON = ();
+	for my $row ( 0 .. $#allMatchRegister ) {
+		$currentRegex = $allMatchRegister[$row][0];
+		@currentHits = ();
+		for my $column ( 1 .. $#{$allMatchRegister[$row]} ) {
+			push @currentHits, $allMatchRegister[$row][$column];
+		}
+		my %currentRow = ('regex'=>$currentRegex, 'hits'=>($#currentHits + 1),'matches'=>[@currentHits]);
+		my $pretty = JSON->new->pretty->canonical->encode(\%currentRow);
+		push @allJSON, from_json($pretty);
+	}
+	print JSON->new->pretty->canonical->encode(\@allJSON);
 }
 
 # Report subs
@@ -310,12 +328,11 @@ GetOptions (
 	'A' => \$arcsight,
 	's' => \$sort,
 	'o=s' => \$output,
-	'f=s' => \$formatFileOutput
+	'j' => \$jsonOpt
 	) or help();
 help() if $help; 
 print $banner if (!$output);
-die "Number of unmatched lines must be a non negative number" if (!($u == -1) && ($u < -1));
-die "Format type not valid. Must be json or csv" if ($formatFileOutput and !($formatFileOutput =~ /^json$|^csv$/i)); 
+die "Number of unmatched lines must be a non negative number" if (!($u == -1) && ($u < -1)); 
 
 my $currentPath = cwd();
 # Test custom regex file
@@ -432,22 +449,6 @@ while (my $line = <$log>){
 # Show report
 report();
 sortRegexOnFile() if $sort;
+jsonOutput() if ($jsonOpt); 
 # Close log file
 close($log);
-
-# DEBUGGING
-my %currentRow = ();
-my $currentRegex = '';
-my @currentHits = ();
-my @allJSON = ();
-for my $row ( 0 .. $#allMatchRegister ) {
-	$currentRegex = $allMatchRegister[$row][0];
-	@currentHits = ();
-	for my $column ( 1 .. $#{$allMatchRegister[$row]} ) {
-		push @currentHits, $allMatchRegister[$row][$column];
-	}
-	my %currentRow = ('regex'=>$currentRegex, 'hits'=>($#currentHits + 1),'matches'=>[@currentHits]);
-	my $pretty = JSON->new->pretty->canonical->encode(\%currentRow);
-	push @allJSON, from_json($pretty);
-}
-#print JSON->new->pretty->canonical->encode(\@allJSON);
