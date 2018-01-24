@@ -16,7 +16,7 @@ my $customRegexPath = '';
 # === Variables ===
 my $time_initialize = Time::HiRes::time();
 my ($regexFile, $logFile, $output, $jsonOpt) = ('') x4;
-my ($help, $verbose, $test, $arcsight, $detailed, $sort, $forceAll) = (0) x7;
+my ($help, $verbose, $test, $arcsight, $detailed, $sort, $forceAll, $ignoringOption) = (0) x8;
 my $u = -1;
 
 my (@re, @unmatch) = () x2;
@@ -29,6 +29,7 @@ my @allMatchRegister = (); 		# $allMatchRegister[x][0] is always the matcher reg
 # Global variables
 our ($unmatchSize, $globalHits, $total) = (0) x3;
 our $outputHandler;
+our @ignoring = ();
 
 my $banner="   _____          __         .__                  
   /     \\ _____ _/  |_  ____ |  |__   ___________ 
@@ -42,40 +43,42 @@ my $banner="   _____          __         .__
 # Help message
 sub help {
 	print "Usage: matcher.pl (-l LOGPATH) (-r REGEXPATH) [-hvdtFuAso]
-	-h, --help        Displays help message and exit
-	-v                Verbose output
-	-l, --log <file>  Set log file to be checked against regexs
-	-r <file>         Set regex file where are stored all regex to test
+	-h, --help      Displays help message and exit
+	-v              Verbose output
+	-l <file>       Set log file to be checked against regexs
+	-r <file>       Set regex file where are stored all regex to test
 
-	-d, --detailed    Print a matched line with all regex groups for all regex
-	-t                Test regex syntax. If anyone is incorrect, the script dies
-	-F                Test log against all regex, even if a match is found
-	-u [number]       Print first N unmatched lines. If no number is specified, it will print all
-	-A                Print all regex in Arcsight format
-	-s                Sort all regex. All comments and empty will be removed
-	-o <filename>     Get output redirected to a file instead of screen
-	-j                Get all hits on JSON format
+	-d, --detailed  Print a matched line with all regex groups for all regex
+	-i              Set regex file where matched lines from log will be ignored
+	-t              Test regex syntax. If anyone is incorrect, the script dies
+	-F              Test log against all regex, even if a match is found
+	-u [number]     Print first N unmatched lines. If no number is specified, it will print all
+	-A              Print all regex in Arcsight format
+	-s              Sort all regex. All comments and empty will be removed
+	-o <filename>   Get output redirected to a file instead of screen
+	-j              Get all hits on JSON format
 	";
 	exit;
 }
 
 # Interaction with files
-sub readRegexFile {
+sub storeRegexFile {
+	# TODO: Modify to be more generic. Input: filename, array to store info <- could it be done?
 	print "Reading regex file...\t" if $verbose;
 	open (my $file, '<:encoding(UTF-8)', $regexFile) or die "Could not open file '$regexFile'";
-	my $letter = '';
+	my $firstChar = '';
 	my ($total_re, $duplicates) = (0) x2;
 	while (my $regex = <$file>){
 		chomp $regex;
-		$letter = substr($regex, 0, 1);
-		if ($letter ne "#" and $letter ne ""){
+		$firstChar = substr($regex, 0, 1);
+		if ($firstChar ne "#" and $firstChar ne ""){
 			if (exists $matcher{$regex}) {
 				print "[WARN] Duplicate found!\n" if (($duplicates eq 0) and $verbose);
-				$duplicates++;
 				print "Ignoring regex $regex\n" if $verbose;
+				$duplicates++;
 			} else {
-				$total_re++;
 				push @re, $regex;
+				$total_re++;
 				$matcher{$regex} .= 0;
 			}
 
@@ -84,6 +87,46 @@ sub readRegexFile {
 	if ($verbose) { $duplicates eq 0 ? print "Done\n" : print "Total duplicates: $duplicates\n\n"; }
 	die "Regex file is empty" if ($total_re eq 0);
 	close($file);
+}
+
+sub storeIgnoringFile {
+	my ($args) = @_;
+
+	my $ignoringFile = $args->{file};
+	#my @stored = $args->{ignoring};
+
+
+	#if (ref $var eq ref {}) {
+	#	print "$var is a hash\n";
+	#}
+
+	print "Reading ignoring file...\t" if $verbose;
+	open (my $file, '<:encoding(UTF-8)', $ignoringFile) or die "Could not open file '$ignoringFile'";
+	my $firstChar = '';
+	my ($total_re, $duplicates) = (0) x2;
+	while (my $regex = <$file>){
+		chomp $regex;
+		$firstChar = substr($regex, 0, 1);
+		if ($firstChar ne "#" and $firstChar ne ""){
+			if (grep(/^$regex$/, @ignoring)) {#@stored)) {
+				print "[WARN] Duplicate found!\n" if (($duplicates eq 0) and $verbose);
+				print "Ignoring regex $regex\n" if $verbose;
+				$duplicates++;
+			} else { 
+				#push @stored, $regex; 
+				push @ignoring, $regex;
+				$total_re++;
+			}
+		}
+		print "Regex: $regex\n";
+	}
+	if ($verbose) { $duplicates eq 0 ? print "Done\n" : print "Total duplicates: $duplicates\n\n"; }
+	print "Ignoring file is empty!\n" if ($detailed and ($total_re eq 0));
+	my $tmp = @ignoring;
+	print "Dentro funcion. Tamaño array: $tmp";
+	close($file);
+
+
 }
 
 # Tests
@@ -319,9 +362,10 @@ sub sortRegexOnFile{
 GetOptions (
 	'help|h|?' => \$help,
 	'v+' => \$verbose,
-	'l|log=s' => \$logFile,
+	'l=s' => \$logFile,
 	'r=s' => \$regexFile,
 	'details|d' => \$detailed,
+	'i=s' => \$ignoringOption,
 	't' => \$test,
 	'F' => \$forceAll,
 	'u:i' => \$u,
@@ -358,7 +402,11 @@ if ($regexFile){
 		$regexFile = $defaultRegexFile;
 	}
 }
-readRegexFile();
+storeRegexFile();
+storeIgnoringFile({
+	file => $ignoringOption,
+	ignoring => \@ignoring
+	}) if ($ignoringOption);
 checkRegex() if $test;
 
 # Check log path and open it
@@ -390,11 +438,25 @@ open (my $log, '<:encoding(UTF-8)', $logFile) or die "Could not open log file '$
 print "Done\n" if $verbose;
 # Test all log against regex(s)
 my $elems = (@re);
-my $checking = "";
-while (my $line = <$log>){
+my ($size, $ignorePos, $ignoreHit) = (0) x3;
+my ($checking, $ignoreLine) = ("") x2;
+while (my $line = <$log>){			# TIME TO RESTRUCTURE THIS GIANT LOOP INTO SUBS
 	my ($match, $elem) = (0) x 2;
 	chomp $line;
-	if (!(length($line) eq 0)){
+	# Check if line must be ignored
+	$ignoreLine = "";
+	if ($ignoringOption){
+		print "Dentro ignore\t";
+		$ignorePos = 0;
+		$size = @ignoring;
+		print "$size\n";
+		while ($ignorePos < $size and !($ignoreHit)){
+			print "$ignorePos\t$size\t$ignoring[$ignorePos]\n";
+			$ignoreHit++ if ($line =~ m/$ignoring[$ignorePos]/);
+		}
+	}
+	if (!(length($line) eq 0) and !($ignoreHit)){
+		#print "Ignore: $ignoreHit for line $line\n";
 		if ($forceAll){ # Check against all regex
 			while ($elem < $elems){
 				$checking = $re[$elem];
