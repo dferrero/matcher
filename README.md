@@ -32,6 +32,10 @@ After the script finish, new executions may be needed (i.e. to get a 100% match 
 
 Regular expressions stored on regex file must be declared one per line. Comments are supported using `#`. Empty lines are ignored.
 
+## Dependencies
+
+`cpan install Path::Tiny JSON` (add `Win32::Console` for Windows)
+
 ## Work In Progress
 - [x] ~~Option `-s` to update regex file and rearrange regex order for better performance~~
 - [x] ~~Option `-F` to force to test all log lines against all regex~~
