@@ -12,11 +12,12 @@ use JSON;
 # Customizable variables
 my $customLogPath = 'C:\Users\David\Documents\Github\matcher\test\ssh-examples.log'; 
 my $customRegexPath = 'C:\Users\David\Documents\Github\matcher\test\ssh.re';
+my $customIgnoringPath = 'C:\Users\David\Documents\Github\matcher\test\ignoring.re';
 
 # === Variables ===
 my $time_initialize = Time::HiRes::time();
-my ($regexPath, $logPath, $output, $jsonOpt) = ('') x4;
-my ($help, $verbose, $test, $arcsight, $detailed, $sort, $forceAll, $ignoringOption) = (0) x8;
+my ($regexPath, $logPath, $ignoringPath, $output, $json) = ('') x4;
+my ($help, $verbose, $test, $arcsight, $detailed, $sort, $forceAll) = (0) x7;
 my $u = -1;
 
 my (@re, @unmatch, @ignoring) = () x3;
@@ -133,7 +134,7 @@ sub checkRegex{
 }
 
 # TODO: rename this sub
-sub jsonOutput{
+sub writeJson{
 	my %currentRow = ();
 	my $currentRegex = '';
 	my @currentHits = ();
@@ -356,7 +357,7 @@ sub checkFilePath{
 	my ($args) = @_;
 
 	my $checkingPath = $args->{path};		# 
-	my $checkingCustomPath = $args->{customPath};	# 
+	my ($checkingCustomPath) = $args->{customPath};	# 
 	
 	my $canBeRead = 1;
 	if ($checkingPath) {
@@ -377,7 +378,6 @@ sub checkFilePath{
 		die "[ERR] Custom file $checkingCustomPath doesn't exist\n"  if (!(-e $checkingCustomPath));
 		die "[ERR] Custom file $checkingCustomPath is not a file\n"  if (!(-f $checkingCustomPath));
 		die "[ERR] Custom file $checkingCustomPath cannot be read\n" if (!(-r $checkingCustomPath));
-		#$checkingPath = $checkingCustomPath;
 		return $checkingCustomPath;
 	}
 	return $checkingPath;
@@ -391,19 +391,18 @@ GetOptions (
 	'l=s' => \$logPath,
 	'r=s' => \$regexPath,
 	'details|d' => \$detailed,
-	'i=s' => \$ignoringOption,
+	'i=s' => \$ignoringPath,
 	't' => \$test,
 	'F' => \$forceAll,
 	'u:i' => \$u,
 	'A' => \$arcsight,
 	's' => \$sort,
 	'o=s' => \$output,
-	'j' => \$jsonOpt
+	'j' => \$json
 	) or help();
 help() if $help; 
 print $banner if (!$output);
 die "Number of unmatched lines must be a non negative number" if (!($u == -1) && ($u < -1)); 
-
 $logPath = checkFilePath({
 	path => $logPath,
 	customPath => $customLogPath
@@ -412,12 +411,17 @@ $regexPath = checkFilePath({
 	path => $regexPath,
 	customPath => $customRegexPath
 	});
-# TODO: checkFilePath for ignoring file
+$ignoringPath = checkFilePath({
+	path => $ignoringPath,
+	customPath => $customIgnoringPath
+	});
+
+# TODO: one storeFile() sub
 storeRegexFile();
 storeIgnoringFile({
-	file => $ignoringOption,
+	file => $ignoringPath,
 	ignoring => \@ignoring
-	}) if ($ignoringOption);
+	}) if ($ignoringPath);
 checkRegex() if $test;
 
 print "Reading log file\t" if $verbose;
@@ -432,7 +436,7 @@ while (my $line = <$log>) {			# TIME TO RESTRUCTURE THIS GIANT LOOP INTO SUBS
 	chomp $line;
 	# Check if line must be ignored
 	$ignoreLine = "";
-	if ($ignoringOption) {
+	if ($ignoringPath) {
 		($ignorePos, $ignoreHit) = (0) x2;
 		$size = @ignoring;
 		while ($ignorePos < $size and !($ignoreHit)) {
@@ -498,4 +502,4 @@ close($log);
 # Show report
 report();
 sortRegexOnFile() if $sort;
-jsonOutput() if ($jsonOpt); 
+writeJson() if ($json); 
