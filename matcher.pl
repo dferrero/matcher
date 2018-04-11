@@ -57,7 +57,8 @@ sub help {
 	-A              Print all regex in Arcsight format
 	-s              Sort all regex. All comments and empty will be removed
 	-o <filename>   Get output redirected to a file instead of screen
-	-j              Get all hits on JSON format
+	-j              Get all hits on JSON format.
+	                If this option is combined with -o, it will create a separate .json file
 	";
 	exit;
 }
@@ -82,7 +83,6 @@ sub storeRegexFile {
 				$total_re++;
 				$matcher{$regex} .= 0;
 			}
-
 		}
 	}
 	if ($verbose) { $duplicates eq 0 ? print "Done\n" : print "Total duplicates: $duplicates\n\n"; }
@@ -145,7 +145,17 @@ sub writeJSON{
 		my $pretty = JSON->new->pretty->canonical->encode(\%currentRow);
 		push @allJSON, from_json($pretty);
 	}
-	print JSON->new->pretty->canonical->encode(\@allJSON);
+	if ($output eq '') {
+		print JSON->new->pretty->canonical->encode(\@allJSON);
+	} else {
+		my $jsonHandler;
+		my $jsonFile = $output . ".json";
+		open ($jsonHandler, '>:encoding(UTF-8)', $jsonFile) or die "Could not open file '$jsonHandler'";
+		print $jsonHandler JSON->new->pretty->canonical->encode(\@allJSON);
+		close $jsonHandler;
+		print "===== JSON document ==========" if $verbose;
+	       	print JSON->new->pretty->canonical->encode(\@allJSON) if $verbose;
+	}
 }
 
 # Report subs
