@@ -31,7 +31,8 @@ my @allMatchRegister = (); 		# $allMatchRegister[x][0] is always the matcher reg
 our ($unmatchSize, $globalHits, $total) = (0) x3;
 our $outputHandler;
 
-my $banner="   _____          __         .__                  
+my $banner="
+   _____          __         .__                  
   /     \\ _____ _/  |_  ____ |  |__   ___________ 
  /  \\ /  \\\\__  \\\\   __\\/ ___\\|  |  \\_/ __ \\_  __ \\
 /    Y    \\/ __ \\|  | \\  \\___|   Y  \\  ___/|  | \\/
@@ -95,10 +96,6 @@ sub storeIgnoringFile {
 	my $ignoringFile = $args->{file};	# Name (path) of the ignoring regex file
 	my ($stored) = $args->{ignoring};	# Array where ignoring regex will be stored
 
-	#if (ref $var eq ref {}) {
-	#	print "$var is a hash\n";
-	#}
-
 	print "Reading ignoring file\t" if $verbose;
 	open (my $file, '<:encoding(UTF-8)', $ignoringFile) or die "Could not open file '$ignoringFile'";
 	my $firstChar = '';
@@ -133,8 +130,7 @@ sub checkRegex{
 	print "All regex have been checked. Syntax is correct.\n" if $verbose;
 }
 
-# TODO: rename this sub
-sub writeJson{
+sub writeJSON{
 	my %currentRow = ();
 	my $currentRegex = '';
 	my @currentHits = ();
@@ -158,6 +154,7 @@ sub report{
 		open ($outputHandler, '>:encoding(UTF-8)', $output) or die "Could not open file '$outputHandler'";
 		print $outputHandler $banner;
 	}
+	# This part doesn't work as expected in Linux iirc. Need more tests
 	# Get window size
 	my ($width, $height) = (0) x2;
 	if ($^O eq "MSWin32") { # Windows
@@ -166,15 +163,9 @@ sub report{
 		($width, $height) = $CONSOLE->Size();
 	} else { $width = `tput cols`; } # Linux / MacOS
 
-
 	$unmatchSize = (@unmatch);
-	if ($output eq '') {
-		print "\n===== Results =============================\n";
-	} else {
-		print $outputHandler "===== Results =============================\n";
-	}
-	report_stats($width, $height);
 
+	report_stats($width, $height);
 	report_unmatches() if ($u > -1);
 	report_detailed()  if ($detailed);
 	report_arcsight()  if ($arcsight);
@@ -192,6 +183,13 @@ sub report_stats{
 		$maxValue = $value if ($value > $maxValue);
 	}
 	my $spaceLength = length($maxValue);
+	my $customEquals = '';
+	for my $i (1 .. $spaceLength + 5) { $customEquals = "=$customEquals"; }
+	if ($output eq '') {
+		print "\n$customEquals Total Hits =============================\n"; 
+	} else {
+		print $outputHandler "$customEquals Total Hits =============================\n";
+	}
 
 	# Stats for all regex
 	foreach my $key (sort {$matcher{$b} <=> $matcher{$a}} keys %matcher) {
@@ -199,14 +197,14 @@ sub report_stats{
 		my $regexHits = $matcher{$key};
 		my $spaces = $spaceLength - length($regexHits);
 		# Checking length of every line
-		my $spaceLeft = $w - ($spaceLength + 8 + 1); # 8 - " hits | " ; 1 blank space at the end
+		my $spaceLeft = $w - ($spaceLength + 7); 
 		my $regex = $key;
 		if (length($key) > $spaceLeft) {
 			$regex = substr $key, 0, ($spaceLeft - 5);
 			$regex = $regex . "[...]";
 		}
 		for my $i (1 .. $spaces) { print " "; }
-		$output eq '' ? print "$regexHits hits | $regex\n" : print $outputHandler "$regexHits hits | $regex\n";
+		$output eq '' ? print "$regexHits hits $regex\n" : print $outputHandler "$regexHits hits $regex\n";
 	}
 	# Time used
 	if ($verbose) {
@@ -356,8 +354,8 @@ sub sortRegexOnFile{
 sub checkFilePath{
 	my ($args) = @_;
 
-	my $checkingPath = $args->{path};		# 
-	my ($checkingCustomPath) = $args->{customPath};	# 
+	my $checkingPath = $args->{path};
+	my ($checkingCustomPath) = $args->{customPath};
 	
 	my $canBeRead = 1;
 	if ($checkingPath) {
@@ -431,7 +429,7 @@ print "Done\n" if $verbose;
 my $elems = (@re);
 my ($size, $ignorePos, $ignoreHit) = (0) x3;
 my ($checking, $ignoreLine) = ("") x2;
-while (my $line = <$log>) {			# TIME TO RESTRUCTURE THIS GIANT LOOP INTO SUBS
+while (my $line = <$log>) {	
 	my ($match, $elem) = (0) x 2;
 	chomp $line;
 	# Check if line must be ignored
@@ -445,53 +443,31 @@ while (my $line = <$log>) {			# TIME TO RESTRUCTURE THIS GIANT LOOP INTO SUBS
 		}
 	}
 	if (!(length($line) eq 0) and !($ignoreHit)) {
-		#print "Ignore: $ignoreHit for line $line\n";
-		if ($forceAll) { # Check against all regex
-			while ($elem < $elems) {
-				$checking = $re[$elem];
-				chomp $checking;
-				if ($line =~ m/$checking/) {
-					$matcher{$checking}++;
+		while ( ($forceAll or ! $match) and ($elem < $elems)) { # $forceAll = True -> Check against all regex
+			$checking = $re[$elem];
+			chomp $checking;
+			if ($line =~ m/$checking/) {
+				$matcher{$checking}++;
+				if ($forceAll){
 					$globalHits++ if ($match eq 0);
-					$match++;
-					if (!(exists $indexMatchRegister{$checking})) { # Doesn't exist yet @ index
-						 $indexMatchRegister{$checking} = $currentIndex;
-						 $allMatchRegister[$currentIndex][0] = $checking;
-						 $allMatchRegister[$currentIndex][1] = $line;
-						 $currentIndex++;
-					} else {
-						push @{ $allMatchRegister[$indexMatchRegister{$checking}] }, $line;
-					}
-					# Temporary; will be removed when all matches array is finished
-					if ($detailed and ! (exists $detailedOutput{$checking})) {
-						$detailedOutput{$checking} = $line; 
-					}
-				} 
-				$elem++;
-			}
-		} else { # Check until a match is found
-			while (! $match and ($elem < $elems)) {
-				$checking = $re[$elem];
-				chomp $checking;
-				if ($line =~ m/$checking/) {
-					$matcher{$checking}++;
-					$match++;
-					$globalHits++;
-					if (!(exists $indexMatchRegister{$checking})) { # Doesn't exist yet @ index
-						 $indexMatchRegister{$checking} = $currentIndex;
-						 $allMatchRegister[$currentIndex][0] = $checking;
-						 $allMatchRegister[$currentIndex][1] = $line;
-						 $currentIndex++;
-					} else {
-						my $index = $indexMatchRegister{$checking};
-						push @{ $allMatchRegister[$index] }, $line;
-					}
-					# Temporary; will be removed when all matches array is finished
-					if ($detailed and ! (exists $detailedOutput{$checking})) {
-						$detailedOutput{$checking} = $line; 
-					}
-				} else { $elem++; }
-			}
+				} else {
+					$globalHits++; 
+				}
+				$match++;
+				if (!(exists $indexMatchRegister{$checking})) { # Doesn't exist yet @ index
+					 $indexMatchRegister{$checking} = $currentIndex;
+					 $allMatchRegister[$currentIndex][0] = $checking;
+					 $allMatchRegister[$currentIndex][1] = $line;
+					 $currentIndex++;
+				} else {
+					push @{ $allMatchRegister[$indexMatchRegister{$checking}] }, $line;
+				}
+				# Temporary; will be removed when all matches array is finished
+				if ($detailed and ! (exists $detailedOutput{$checking})) {
+					$detailedOutput{$checking} = $line; 
+				}
+			} 
+			$elem++;
 		}
 		if ($elem == $elems and $match eq 0) { push @unmatch, $line; }
 	}
@@ -502,4 +478,4 @@ close($log);
 # Show report
 report();
 sortRegexOnFile() if $sort;
-writeJson() if ($json); 
+writeJSON() if $json; 
