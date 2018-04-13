@@ -17,7 +17,7 @@ my $customIgnoringPath = 'C:\Users\David\Documents\Github\matcher\test\ignoring.
 # === Variables ===
 my $time_initialize = Time::HiRes::time();
 my ($regexPath, $logPath, $ignoringPath, $output, $json) = ('') x4;
-my ($help, $verbose, $test, $arcsight, $detailed, $sort, $forceAll) = (0) x7;
+my ($help, $verbose, $test, $doubleSlash, $detailed, $sort, $forceAll) = (0) x7;
 my $u = -1;
 
 my (@re, @unmatch, @ignoring) = () x3;
@@ -54,8 +54,8 @@ sub help {
 	-t              Test regex syntax. If anyone is incorrect, the script dies
 	-F              Test log against all regex, even if a match is found
 	-u [number]     Print first N unmatched lines. If no number is specified, it will print all
-	-A              Print all regex in Arcsight format
-	-s              Sort all regex. All comments and empty will be removed
+	-D              Print all regex with double slash '\\'
+	-s              Sort all regex by number of hits. All comments and empty will be removed
 	-o <filename>   Get output redirected to a file instead of screen
 	-j              Get all hits on JSON format.
 	                If this option is combined with -o, it will create a separate .json file
@@ -150,11 +150,12 @@ sub writeJSON{
 	} else {
 		my $jsonHandler;
 		my $jsonFile = $output . ".json";
+		print "Writing JSON file..." if $verbose;
 		open ($jsonHandler, '>:encoding(UTF-8)', $jsonFile) or die "Could not open file '$jsonHandler'";
 		print $jsonHandler JSON->new->pretty->canonical->encode(\@allJSON);
 		close $jsonHandler;
 		print "===== JSON document ==========" if $verbose;
-	       	print JSON->new->pretty->canonical->encode(\@allJSON) if $verbose;
+		print JSON->new->pretty->canonical->encode(\@allJSON) if $verbose;
 	}
 }
 
@@ -178,7 +179,7 @@ sub report{
 	report_stats($width, $height);
 	report_unmatches() if ($u > -1);
 	report_detailed()  if ($detailed);
-	report_arcsight()  if ($arcsight);
+	report_doubleSlash()  if ($doubleSlash);
 
 	close ($outputHandler) if (!$output eq '');
 }
@@ -328,24 +329,24 @@ sub report_detailed{
 	}
 }
 
-sub report_arcsight{
+sub report_doubleSlash{
 	if ($output eq '') {
-		print "\n===== Arcsight Regex Format ===============\n";
+		print "\n===== Double slash ===============\n";
 	} else {
-		print $outputHandler "\n===== Arcsight Regex Format ===============\n";
+		print $outputHandler "\n===== Double slash ===============\n";
 	}
-	my $arcsightCounter = 1;
+	my $slashCounter = 1;
 	foreach my $key (sort {$matcher{$b} <=> $matcher{$a}} keys %matcher) {
 		if ($matcher{$key} > 0) {
 			my $regex = $key;
 			$regex =~ s/\\/\\\\/g;
 			if ($output eq '') {
-				print "Regex #" . $arcsightCounter . ":\n$regex\n";
+				print "Regex #" . $slashCounter . ":\n$regex\n";
 			} else {
-				print $outputHandler "Regex #" . $arcsightCounter . ":\n";
+				print $outputHandler "Regex #" . $slashCounter . ":\n";
 				print $outputHandler "$regex\n";
 			}
-			$arcsightCounter++;
+			$slashCounter++;
 		}
 	}
 }
@@ -403,7 +404,7 @@ GetOptions (
 	't' => \$test,
 	'F' => \$forceAll,
 	'u:i' => \$u,
-	'A' => \$arcsight,
+	'D' => \$doubleSlash,
 	's' => \$sort,
 	'o=s' => \$output,
 	'j' => \$json
