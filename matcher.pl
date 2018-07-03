@@ -9,6 +9,8 @@ use Time::HiRes;
 use Cwd;
 use JSON;
 
+require Term::Screen::Uni;
+
 # Customizable variables
 my $customLogPath = 'C:\Users\David\Documents\Github\matcher\test\ssh-examples.log'; 
 my $customRegexPath = 'C:\Users\David\Documents\Github\matcher\test\ssh.re';
@@ -40,6 +42,39 @@ my $banner="
         \\/     \\/          \\/     \\/     \\/       
    Author: \@dferrero	Version: 0.1\n\n";
 
+# === Interactive mode ===
+sub inizialize_variables {
+	# WIP
+}
+
+sub inter_add_regex {
+	# WIP
+}
+
+sub menu {
+	my $option = -1;
+	while ($option != 0) {
+		my $screen = new Term::Screen::Uni;
+		$screen->clrscr();
+		print $banner;
+		print "\t1- Add a regex\n";
+		print "\t0- Exit\n";
+		print "\n\tStored regex: \n";
+		print "\tSelect an option: ";
+		$option = <>;
+		switch ($option) {
+			case 1	{ inter_add_regex(); }
+			case 0	{ print "Exiting..." }
+			else	{ print "Invalid option: $option\n"; $option = -1}
+		}
+	}
+}
+
+sub interactitve {
+	inizialize_variables();
+	menu();
+}
+
 # === Subs ===
 # Help message
 sub help {
@@ -63,7 +98,7 @@ sub help {
 	exit;
 }
 
-# Interaction with files
+# Files
 sub storeRegexFile {
 	# TODO: Modify to be more generic. Input: filename, array to store info <- could it be done?
 	print "Reading regex file\t" if $verbose;
@@ -409,6 +444,13 @@ GetOptions (
 	'o=s' => \$output,
 	'j' => \$json
 	) or help();
+
+# If number of params is 0, the script starts in interactive mode
+if ($#ARGV == 0) {
+	interactive();
+	exit;
+}
+
 help() if $help; 
 print $banner if (!$output);
 die "Number of unmatched lines must be a non negative number" if (!($u == -1) && ($u < -1)); 
