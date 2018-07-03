@@ -22,10 +22,11 @@ Optional:
 -t              Test regex syntax. If anyone is incorrect, the script dies
 -F              Test log against all regex, even if a match is found
 -u [number]     Print first N unmatched lines. If no number is specified, it will print all
--A              Print all regex in Arcsight format
--s              Sort all regex. All comments and empty lines will be removed
+-D              Print all regex with double slash
+-s              Sort all regex by number of hits. All comments and empty lines will be removed
 -o <filename>   Get output redirected to a file instead of screen
 -j              Get all hits on JSON format
+                If this option is combined with -o, it will create a separate .json file
 ```
 
 If the script is used without log or regex file, it will try to use the custom option. If any custom option also doesn't exist, the script will finish.
@@ -43,10 +44,6 @@ Regular expressions stored on regex files must be declared one per line. Comment
 `cpan install Path::Tiny JSON` (add `Win32::Console` for Windows)
 
 ## Work In Progress
-- [x] ~~Option `-s` to update regex file and rearrange regex order for better performance~~
-- [x] ~~Option `-F` to force to test all log lines against all regex~~
-- [x] ~~Secondary regex file to ignore (`-i`) lines who matches~~
-- [x] ~~Output of all matches to JSON.~~
 - [ ] Change JSON matches doc to 'group-by' option
 - [ ] Check against multiple log files (via wildcar?) (1)
 

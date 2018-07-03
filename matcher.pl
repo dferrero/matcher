@@ -17,7 +17,7 @@ my $customIgnoringPath = 'C:\Users\David\Documents\Github\matcher\test\ignoring.
 # === Variables ===
 my $time_initialize = Time::HiRes::time();
 my ($regexPath, $logPath, $ignoringPath, $output, $json) = ('') x4;
-my ($help, $verbose, $test, $arcsight, $detailed, $sort, $forceAll) = (0) x7;
+my ($help, $verbose, $test, $doubleSlash, $detailed, $sort, $forceAll) = (0) x7;
 my $u = -1;
 
 my (@re, @unmatch, @ignoring) = () x3;
@@ -31,7 +31,8 @@ my @allMatchRegister = (); 		# $allMatchRegister[x][0] is always the matcher reg
 our ($unmatchSize, $globalHits, $total) = (0) x3;
 our $outputHandler;
 
-my $banner="   _____          __         .__                  
+my $banner="
+   _____          __         .__                  
   /     \\ _____ _/  |_  ____ |  |__   ___________ 
  /  \\ /  \\\\__  \\\\   __\\/ ___\\|  |  \\_/ __ \\_  __ \\
 /    Y    \\/ __ \\|  | \\  \\___|   Y  \\  ___/|  | \\/
@@ -53,10 +54,11 @@ sub help {
 	-t              Test regex syntax. If anyone is incorrect, the script dies
 	-F              Test log against all regex, even if a match is found
 	-u [number]     Print first N unmatched lines. If no number is specified, it will print all
-	-A              Print all regex in Arcsight format
-	-s              Sort all regex. All comments and empty will be removed
+	-D              Print all regex with double slash '\\'
+	-s              Sort all regex by number of hits. All comments and empty will be removed
 	-o <filename>   Get output redirected to a file instead of screen
-	-j              Get all hits on JSON format
+	-j              Get all hits on JSON format.
+	                If this option is combined with -o, it will create a separate .json file
 	";
 	exit;
 }
@@ -81,7 +83,6 @@ sub storeRegexFile {
 				$total_re++;
 				$matcher{$regex} .= 0;
 			}
-
 		}
 	}
 	if ($verbose) { $duplicates eq 0 ? print "Done\n" : print "Total duplicates: $duplicates\n\n"; }
@@ -94,10 +95,6 @@ sub storeIgnoringFile {
 
 	my $ignoringFile = $args->{file};	# Name (path) of the ignoring regex file
 	my ($stored) = $args->{ignoring};	# Array where ignoring regex will be stored
-
-	#if (ref $var eq ref {}) {
-	#	print "$var is a hash\n";
-	#}
 
 	print "Reading ignoring file\t" if $verbose;
 	open (my $file, '<:encoding(UTF-8)', $ignoringFile) or die "Could not open file '$ignoringFile'";
@@ -133,8 +130,7 @@ sub checkRegex{
 	print "All regex have been checked. Syntax is correct.\n" if $verbose;
 }
 
-# TODO: rename this sub
-sub writeJson{
+sub writeJSON{
 	my %currentRow = ();
 	my $currentRegex = '';
 	my @currentHits = ();
@@ -149,7 +145,18 @@ sub writeJson{
 		my $pretty = JSON->new->pretty->canonical->encode(\%currentRow);
 		push @allJSON, from_json($pretty);
 	}
-	print JSON->new->pretty->canonical->encode(\@allJSON);
+	if ($output eq '') {
+		print JSON->new->pretty->canonical->encode(\@allJSON);
+	} else {
+		my $jsonHandler;
+		my $jsonFile = $output . ".json";
+		print "Writing JSON file..." if $verbose;
+		open ($jsonHandler, '>:encoding(UTF-8)', $jsonFile) or die "Could not open file '$jsonHandler'";
+		print $jsonHandler JSON->new->pretty->canonical->encode(\@allJSON);
+		close $jsonHandler;
+		print "===== JSON document ==========" if $verbose;
+		print JSON->new->pretty->canonical->encode(\@allJSON) if $verbose;
+	}
 }
 
 # Report subs
@@ -158,6 +165,7 @@ sub report{
 		open ($outputHandler, '>:encoding(UTF-8)', $output) or die "Could not open file '$outputHandler'";
 		print $outputHandler $banner;
 	}
+	# This part doesn't work as expected in Linux iirc. Need more tests
 	# Get window size
 	my ($width, $height) = (0) x2;
 	if ($^O eq "MSWin32") { # Windows
@@ -166,18 +174,12 @@ sub report{
 		($width, $height) = $CONSOLE->Size();
 	} else { $width = `tput cols`; } # Linux / MacOS
 
-
 	$unmatchSize = (@unmatch);
-	if ($output eq '') {
-		print "\n===== Results =============================\n";
-	} else {
-		print $outputHandler "===== Results =============================\n";
-	}
-	report_stats($width, $height);
 
+	report_stats($width, $height);
 	report_unmatches() if ($u > -1);
 	report_detailed()  if ($detailed);
-	report_arcsight()  if ($arcsight);
+	report_doubleSlash()  if ($doubleSlash);
 
 	close ($outputHandler) if (!$output eq '');
 }
@@ -192,6 +194,13 @@ sub report_stats{
 		$maxValue = $value if ($value > $maxValue);
 	}
 	my $spaceLength = length($maxValue);
+	my $customEquals = '';
+	for my $i (1 .. $spaceLength + 5) { $customEquals = "=$customEquals"; }
+	if ($output eq '') {
+		print "\n$customEquals Total Hits =============================\n"; 
+	} else {
+		print $outputHandler "$customEquals Total Hits =============================\n";
+	}
 
 	# Stats for all regex
 	foreach my $key (sort {$matcher{$b} <=> $matcher{$a}} keys %matcher) {
@@ -199,14 +208,14 @@ sub report_stats{
 		my $regexHits = $matcher{$key};
 		my $spaces = $spaceLength - length($regexHits);
 		# Checking length of every line
-		my $spaceLeft = $w - ($spaceLength + 8 + 1); # 8 - " hits | " ; 1 blank space at the end
+		my $spaceLeft = $w - ($spaceLength + 7); 
 		my $regex = $key;
 		if (length($key) > $spaceLeft) {
 			$regex = substr $key, 0, ($spaceLeft - 5);
 			$regex = $regex . "[...]";
 		}
 		for my $i (1 .. $spaces) { print " "; }
-		$output eq '' ? print "$regexHits hits | $regex\n" : print $outputHandler "$regexHits hits | $regex\n";
+		$output eq '' ? print "$regexHits hits $regex\n" : print $outputHandler "$regexHits hits $regex\n";
 	}
 	# Time used
 	if ($verbose) {
@@ -320,24 +329,24 @@ sub report_detailed{
 	}
 }
 
-sub report_arcsight{
+sub report_doubleSlash{
 	if ($output eq '') {
-		print "\n===== Arcsight Regex Format ===============\n";
+		print "\n===== Double slash ===============\n";
 	} else {
-		print $outputHandler "\n===== Arcsight Regex Format ===============\n";
+		print $outputHandler "\n===== Double slash ===============\n";
 	}
-	my $arcsightCounter = 1;
+	my $slashCounter = 1;
 	foreach my $key (sort {$matcher{$b} <=> $matcher{$a}} keys %matcher) {
 		if ($matcher{$key} > 0) {
 			my $regex = $key;
 			$regex =~ s/\\/\\\\/g;
 			if ($output eq '') {
-				print "Regex #" . $arcsightCounter . ":\n$regex\n";
+				print "Regex #" . $slashCounter . ":\n$regex\n";
 			} else {
-				print $outputHandler "Regex #" . $arcsightCounter . ":\n";
+				print $outputHandler "Regex #" . $slashCounter . ":\n";
 				print $outputHandler "$regex\n";
 			}
-			$arcsightCounter++;
+			$slashCounter++;
 		}
 	}
 }
@@ -356,8 +365,8 @@ sub sortRegexOnFile{
 sub checkFilePath{
 	my ($args) = @_;
 
-	my $checkingPath = $args->{path};		# 
-	my ($checkingCustomPath) = $args->{customPath};	# 
+	my $checkingPath = $args->{path};
+	my ($checkingCustomPath) = $args->{customPath};
 	
 	my $canBeRead = 1;
 	if ($checkingPath) {
@@ -395,7 +404,7 @@ GetOptions (
 	't' => \$test,
 	'F' => \$forceAll,
 	'u:i' => \$u,
-	'A' => \$arcsight,
+	'D' => \$doubleSlash,
 	's' => \$sort,
 	'o=s' => \$output,
 	'j' => \$json
@@ -431,7 +440,7 @@ print "Done\n" if $verbose;
 my $elems = (@re);
 my ($size, $ignorePos, $ignoreHit) = (0) x3;
 my ($checking, $ignoreLine) = ("") x2;
-while (my $line = <$log>) {			# TIME TO RESTRUCTURE THIS GIANT LOOP INTO SUBS
+while (my $line = <$log>) {	
 	my ($match, $elem) = (0) x 2;
 	chomp $line;
 	# Check if line must be ignored
@@ -445,53 +454,31 @@ while (my $line = <$log>) {			# TIME TO RESTRUCTURE THIS GIANT LOOP INTO SUBS
 		}
 	}
 	if (!(length($line) eq 0) and !($ignoreHit)) {
-		#print "Ignore: $ignoreHit for line $line\n";
-		if ($forceAll) { # Check against all regex
-			while ($elem < $elems) {
-				$checking = $re[$elem];
-				chomp $checking;
-				if ($line =~ m/$checking/) {
-					$matcher{$checking}++;
+		while ( ($forceAll or ! $match) and ($elem < $elems)) { # $forceAll = True -> Check against all regex
+			$checking = $re[$elem];
+			chomp $checking;
+			if ($line =~ m/$checking/) {
+				$matcher{$checking}++;
+				if ($forceAll){
 					$globalHits++ if ($match eq 0);
-					$match++;
-					if (!(exists $indexMatchRegister{$checking})) { # Doesn't exist yet @ index
-						 $indexMatchRegister{$checking} = $currentIndex;
-						 $allMatchRegister[$currentIndex][0] = $checking;
-						 $allMatchRegister[$currentIndex][1] = $line;
-						 $currentIndex++;
-					} else {
-						push @{ $allMatchRegister[$indexMatchRegister{$checking}] }, $line;
-					}
-					# Temporary; will be removed when all matches array is finished
-					if ($detailed and ! (exists $detailedOutput{$checking})) {
-						$detailedOutput{$checking} = $line; 
-					}
-				} 
-				$elem++;
-			}
-		} else { # Check until a match is found
-			while (! $match and ($elem < $elems)) {
-				$checking = $re[$elem];
-				chomp $checking;
-				if ($line =~ m/$checking/) {
-					$matcher{$checking}++;
-					$match++;
-					$globalHits++;
-					if (!(exists $indexMatchRegister{$checking})) { # Doesn't exist yet @ index
-						 $indexMatchRegister{$checking} = $currentIndex;
-						 $allMatchRegister[$currentIndex][0] = $checking;
-						 $allMatchRegister[$currentIndex][1] = $line;
-						 $currentIndex++;
-					} else {
-						my $index = $indexMatchRegister{$checking};
-						push @{ $allMatchRegister[$index] }, $line;
-					}
-					# Temporary; will be removed when all matches array is finished
-					if ($detailed and ! (exists $detailedOutput{$checking})) {
-						$detailedOutput{$checking} = $line; 
-					}
-				} else { $elem++; }
-			}
+				} else {
+					$globalHits++; 
+				}
+				$match++;
+				if (!(exists $indexMatchRegister{$checking})) { # Doesn't exist yet @ index
+					 $indexMatchRegister{$checking} = $currentIndex;
+					 $allMatchRegister[$currentIndex][0] = $checking;
+					 $allMatchRegister[$currentIndex][1] = $line;
+					 $currentIndex++;
+				} else {
+					push @{ $allMatchRegister[$indexMatchRegister{$checking}] }, $line;
+				}
+				# Temporary; will be removed when all matches array is finished
+				if ($detailed and ! (exists $detailedOutput{$checking})) {
+					$detailedOutput{$checking} = $line; 
+				}
+			} 
+			$elem++;
 		}
 		if ($elem == $elems and $match eq 0) { push @unmatch, $line; }
 	}
@@ -502,4 +489,4 @@ close($log);
 # Show report
 report();
 sortRegexOnFile() if $sort;
-writeJson() if ($json); 
+writeJSON() if $json; 
