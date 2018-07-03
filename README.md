@@ -47,7 +47,11 @@ Regular expressions stored on regex files must be declared one per line. Comment
 - [ ] Change JSON matches doc to 'group-by' option
 - [ ] Check against multiple log files (via wildcar?) (1)
 
-## Ideas
+## Priority
+- [ ] Interactive mode
+- [ ] Travis-CI integration
+
+## Other ideas
 - [ ] (1) Classify output by source log file
 - [ ] Option `-C` to get only group matches. Formats: differents files/specific delimiter (using secondary option) e.g. -C -delimiter ':' -> dave:login
 - [ ] Test against multiple file logs
