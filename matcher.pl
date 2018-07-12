@@ -42,37 +42,13 @@ my $banner="
         \\/     \\/          \\/     \\/     \\/       
    Author: \@dferrero	Version: 0.1\n\n";
 
-# === Interactive mode ===
 sub inizialize_variables {
-	# WIP
-}
-
-sub inter_add_regex {
-	# WIP
-}
-
-sub menu {
-	my $option = -1;
-	while ($option != 0) {
-		my $screen = new Term::Screen::Uni;
-		$screen->clrscr();
-		print $banner;
-		print "\t1- Add a regex\n";
-		print "\t0- Exit\n";
-		print "\n\tStored regex: \n";
-		print "\tSelect an option: ";
-		$option = <>;
-		switch ($option) {
-			case 1	{ inter_add_regex(); }
-			case 0	{ print "Exiting..." }
-			else	{ print "Invalid option: $option\n"; $option = -1}
-		}
-	}
-}
-
-sub interactitve {
-	inizialize_variables();
-	menu();
+	$u = -1;
+	($regexPath, $logPath, $ignoringPath, $output, $json) = ('') x4;
+	($forceAl, $unmatchSize, $globalHits, $total, $currentIndex) = (0) x5;
+	($help, $verbose, $test, $doubleSlash, $detailed, $sort) = (0) x6;
+	(@re, @unmatch, @ignoring, @allMatchRegister) = () x4;
+	(%matcher, %detailedOutput, %regexFiles, %indexMatchRegister) = () x4;	
 }
 
 # === Subs ===
@@ -98,6 +74,71 @@ sub help {
 	exit;
 }
 
+sub interactitve {
+	inizialize_variables();
+	menu();
+}
+
+sub menu {
+	my $option = -1;
+	while ($option != 0) {
+		my $screen = new Term::Screen::Uni;
+		$screen->clrscr();
+		print $banner;
+		print "\t1- Add a regex\n";
+		print "\t2- Delete a stored regex\n";
+		print "\t3- Test stored regex\n";
+		print "\t0- Exit\n";
+		print "\n\tTotal stored regex: " . scalar(@re) . "\n";
+		print "\tSelect an option: ";
+		$option = <>;
+		switch ($option) {
+			case 1	{ menu_add_regex(); }
+			case 0	{ print "Exiting..." }
+			else	{ print "Invalid option: $option\n"; $option = -1}
+		}
+	}
+}
+
+sub menu_add_regex {
+	print "Please type your regex:\n";
+	my $re = <>;
+	add_regex($re);
+}
+
+sub add_regex {
+	my $regex = shift;
+	chomp $regex;
+	$firstChar = substr($regex, 0, 1);
+	if ($firstChar ne "#" and $firstChar ne "") {
+		if (exists $matcher{$regex}) {
+			print "[WARN] Duplicate found!\n" if (($duplicates eq 0) and $verbose);
+			print "Ignoring regex $regex\n" if $verbose;
+			$duplicates++;
+		} else {
+			push @re, $regex;
+			$total_re++;
+			$matcher{$regex} .= 0;
+		}
+	}
+}
+
+sub storeRegex {
+	chomp $regex;
+	$firstChar = substr($regex, 0, 1);
+	
+		if (exists $matcher{$regex}) {
+			print "[WARN] Duplicate found!\n" if (($duplicates eq 0) and $verbose);
+			print "Ignoring regex $regex\n" if $verbose;
+			$duplicates++;
+		} else {
+			push @re, $regex;
+			$total_re++;
+			$matcher{$regex} .= 0;
+		}
+	}
+}
+
 # Files
 sub storeRegexFile {
 	# TODO: Modify to be more generic. Input: filename, array to store info <- could it be done?
@@ -106,6 +147,9 @@ sub storeRegexFile {
 	my $firstChar = '';
 	my ($total_re, $duplicates) = (0) x2;
 	while (my $regex = <$file>) {
+		$firstChar = substr($regex, 0, 1);
+		if ($firstChar ne "#" and $firstChar ne "") {
+=storeRegex
 		chomp $regex;
 		$firstChar = substr($regex, 0, 1);
 		if ($firstChar ne "#" and $firstChar ne "") {
@@ -119,6 +163,7 @@ sub storeRegexFile {
 				$matcher{$regex} .= 0;
 			}
 		}
+=cut
 	}
 	if ($verbose) { $duplicates eq 0 ? print "Done\n" : print "Total duplicates: $duplicates\n\n"; }
 	die "Regex file is empty" if ($total_re eq 0);
