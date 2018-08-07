@@ -6,9 +6,10 @@ TL;DR instant usage: `perl matcher.pl -l <log-file-path> -r <regex-file-path>`
 
 ## Usage
 
-This list includes all available parameters which can be used with the script. If any of then uses spaces they must be written with brackets: `"`.
+This list includes all available parameters which can be used with the script. If any of then uses spaces, they must be written with brackets: `"`.
 
 ```
+Classical:
 -h, --help      Displays help message and exit
 -v              Verbose output
 
@@ -31,17 +32,17 @@ Optional:
 
 If the script is used without log or regex file, it will try to use the custom option. If any custom option also doesn't exist, the script will finish.
 
-Log lines are checked against regex in the order in which they appear in the regex file until a match is found (or every regex is tested without success). To force a check with all regex, use `-F` (WIP). Empty lines on log file will be ignored.
+Log lines are checked against regex in the order in which they appear in the regex file until a match is found (or every regex is tested without success). To force a check against all regex, use `-F` (WIP). Empty lines on log file will be ignored.
 
 Optional param `-i` can be used to use a second regex file. Every log line matched by one of those regex will be ignored.
 
-After the script finish, new executions may be needed (i.e. to get a 100% match of all the log). To improve execution time, is recommended to add `-s` to rearrange RE of regex file from most matched to less one.
+After the script execution finish, maybe the suer will need to run it again (i.e. to get a 100% match of all the log). To improve execution time, is recommended to add `-s` to sort RE of regex file from most matched to less one, improving the execution time.
 
-Regular expressions stored on regex files must be declared one per line. Comments are supported using `#`. Empty lines are ignored.
+Regular expressions stored on regex files must be declared one per line (multiline is not supported yet). Comments are available using `#`. Empty lines are ignored.
 
 ## Dependencies
 
-`cpan install Path::Tiny JSON` (add `Win32::Console` for Windows)
+`cpan install Path::Tiny JSON`
 
 ## Work In Progress
 - [ ] Change JSON matches doc to 'group-by' option
@@ -49,12 +50,12 @@ Regular expressions stored on regex files must be declared one per line. Comment
 
 ## Priority
 - [ ] Interactive mode
-- [ ] Travis-CI integration
+- [ ] Test files
 
 ## Other ideas
 - [ ] (1) Classify output by source log file
 - [ ] Option `-C` to get only group matches. Formats: differents files/specific delimiter (using secondary option) e.g. -C -delimiter ':' -> dave:login
+- [ ] Custom names for capture groups
 - [ ] Test against multiple file logs
-- [ ] Daemon mode (monitoring one or more files to get unmatches and/or reports)
-- [ ] Improve performance
+- [ ] Improve performance (remove duplicated code)
 - [ ] "Intelligent" print mode of regex results

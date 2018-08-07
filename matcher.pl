@@ -10,9 +10,9 @@ use Cwd;
 use JSON;
 
 # Customizable variables
-my $customLogPath = 'C:\Users\David\Documents\Github\matcher\test\ssh-examples.log'; 
-my $customRegexPath = 'C:\Users\David\Documents\Github\matcher\test\ssh.re';
-my $customIgnoringPath = 'C:\Users\David\Documents\Github\matcher\test\ignoring.re';
+my $customLogPath = abs_path() . '/test/ssh-examples.log'; 
+my $customRegexPath = abs_path() . '/test/ssh.re';
+my $customIgnoringPath = abs_path() . '/test/ignoring.re';
 
 # === Variables ===
 my $time_initialize = Time::HiRes::time();
@@ -43,7 +43,7 @@ my $banner="
 # === Subs ===
 # Help message
 sub help {
-	print "Usage: matcher.pl (-l LOGPATH) (-r REGEXPATH) [-hvdtFuAso]
+	print "Usage: matcher.pl (-l LOGPATH) (-r REGEXPATH) [-hvditFuDsoj]
 	-h, --help      Displays help message and exit
 	-v              Verbose output
 	-l <file>       Set log file to be checked against regexs
@@ -65,7 +65,6 @@ sub help {
 
 # Interaction with files
 sub storeRegexFile {
-	# TODO: Modify to be more generic. Input: filename, array to store info <- could it be done?
 	print "Reading regex file\t" if $verbose;
 	open (my $file, '<:encoding(UTF-8)', $regexPath) or die "Could not open file '$regexPath'";
 	my $firstChar = '';
@@ -165,19 +164,11 @@ sub report{
 		open ($outputHandler, '>:encoding(UTF-8)', $output) or die "Could not open file '$outputHandler'";
 		print $outputHandler $banner;
 	}
-	# This part doesn't work as expected in Linux iirc. Need more tests
-	# Get window size
-	my ($width, $height) = (0) x2;
-	if ($^O eq "MSWin32") { # Windows
-		use Win32::Console;
-		my $CONSOLE = Win32::Console->new();
-		($width, $height) = $CONSOLE->Size();
-	} else { $width = `tput cols`; } # Linux / MacOS
-
+	my $width = `tput cols`;
 	$unmatchSize = (@unmatch);
 
 	report_stats($width, $height);
-	report_unmatches() if ($u > -1);
+	report_unmatches() if ($u > -1 && $unmatchSize > 0);
 	report_detailed()  if ($detailed);
 	report_doubleSlash()  if ($doubleSlash);
 
@@ -352,7 +343,6 @@ sub report_doubleSlash{
 }
 
 sub sortRegexOnFile{
-	# Do we want to save comments and empty lines?
 	print "\nSorting regex...\t" if $verbose;
 	open (my $reFile, '>:encoding(UTF-8)', $regexPath) or die "Could not open file '$regexPath'";
 	foreach my $key (sort {$matcher{$b} <=> $matcher{$a}} keys %matcher) {
@@ -425,7 +415,6 @@ $ignoringPath = checkFilePath({
 	customPath => $customIgnoringPath
 	});
 
-# TODO: one storeFile() sub
 storeRegexFile();
 storeIgnoringFile({
 	file => $ignoringPath,
