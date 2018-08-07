@@ -12,7 +12,7 @@ use JSON;
 # Customizable variables
 my $customLogPath = abs_path() . '/test/ssh-examples.log'; 
 my $customRegexPath = abs_path() . '/test/ssh.re';
-my $customIgnoringPath = abs_path() . '/test/ignoring.re';
+#my $customIgnoringPath = abs_path() . '/test/ignoring.re';
 
 # === Variables ===
 my $time_initialize = Time::HiRes::time();
@@ -30,6 +30,8 @@ my @allMatchRegister = (); 		# $allMatchRegister[x][0] is always the matcher reg
 # Global variables
 our ($unmatchSize, $globalHits, $total) = (0) x3;
 our $outputHandler;
+
+binmode STDOUT, ":utf8";
 
 my $banner="
    _____          __         .__                  
@@ -58,8 +60,7 @@ sub help {
 	-s              Sort all regex by number of hits. All comments and empty will be removed
 	-o <filename>   Get output redirected to a file instead of screen
 	-j              Get all hits on JSON format.
-	                If this option is combined with -o, it will create a separate .json file
-	";
+	                If this option is combined with -o, it will create a separate .json file" . "\n";
 	exit;
 }
 
@@ -372,8 +373,7 @@ sub checkFilePath{
 		}
 	} 
 	if (!($canBeRead)) {
-		# Testing custom regex file path
-		# If doesn't exist, it will try to use custom file or the script will die
+		# Testing custom regex file path. If doesn't exist, it will use custom file or the script will die
 		die "[ERR] Custom file $checkingCustomPath doesn't exist\n"  if (!(-e $checkingCustomPath));
 		die "[ERR] Custom file $checkingCustomPath is not a file\n"  if (!(-f $checkingCustomPath));
 		die "[ERR] Custom file $checkingCustomPath cannot be read\n" if (!(-r $checkingCustomPath));
@@ -410,10 +410,11 @@ $regexPath = checkFilePath({
 	path => $regexPath,
 	customPath => $customRegexPath
 	});
-$ignoringPath = checkFilePath({
-	path => $ignoringPath,
-	customPath => $customIgnoringPath
-	});
+# TODO: new checker for ignoringPath
+#$ignoringPath = checkFilePath({
+#	path => $ignoringPath,
+#	customPath => ""#$customIgnoringPath
+#	});
 
 storeRegexFile();
 storeIgnoringFile({
