@@ -1,3 +1,0 @@
-# Regex file
-# Empty lines are not processed
-# Lines which first caracter is '#' are considered as comments

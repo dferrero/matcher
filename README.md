@@ -45,17 +45,14 @@ Regular expressions stored on regex files must be declared one per line (multili
 `cpan install Path::Tiny JSON`
 
 ## Work In Progress
-- [ ] Change JSON matches doc to 'group-by' option
-- [ ] Check against multiple log files (via wildcar?) (1)
+- [ ] Split into modules
+- [ ] Tests
 
-## Priority
+## Brainstorming
 - [ ] Interactive mode
-- [ ] Test files
-
-## Other ideas
-- [ ] (1) Classify output by source log file
-- [ ] Option `-C` to get only group matches. Formats: differents files/specific delimiter (using secondary option) e.g. -C -delimiter ':' -> dave:login
+- [ ] Change JSON matches doc to 'group-by' option
+- [ ] Check against multiple log files (wildcard?). Classify output by source log file
+- [ ] Option `-C` to get only group matches. Formats: differents files/specific delimiter (using secondary option) e.g. `-C -delimiter ':'` -> `dave:login`
 - [ ] Custom names for capture groups
-- [ ] Test against multiple file logs
 - [ ] Improve performance (remove duplicated code)
 - [ ] "Intelligent" print mode of regex results
