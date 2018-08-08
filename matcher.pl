@@ -10,9 +10,8 @@ use Cwd;
 use JSON;
 
 # Customizable variables
-my $customLogPath = abs_path() . '/test/ssh-examples.log'; 
-my $customRegexPath = abs_path() . '/test/ssh.re';
-#my $customIgnoringPath = abs_path() . '/test/ignoring.re';
+my $customLogPath = cwd() . '/test/ssh-examples.log'; 
+my $customRegexPath = cwd() . '/test/ssh.re';
 
 # === Variables ===
 my $time_initialize = Time::HiRes::time();
@@ -149,7 +148,7 @@ sub writeJSON{
 		print JSON->new->pretty->canonical->encode(\@allJSON);
 	} else {
 		my $jsonHandler;
-		my $jsonFile = $output . ".json";
+		my $jsonFile = join( "", split(".txt", $output) ). ".json";
 		print "Writing JSON file..." if $verbose;
 		open ($jsonHandler, '>:encoding(UTF-8)', $jsonFile) or die "Could not open file '$jsonHandler'";
 		print $jsonHandler JSON->new->pretty->canonical->encode(\@allJSON);
@@ -168,7 +167,7 @@ sub report{
 	my $width = `tput cols`;
 	$unmatchSize = (@unmatch);
 
-	report_stats($width, $height);
+	report_stats($width);
 	report_unmatches() if ($u > -1 && $unmatchSize > 0);
 	report_detailed()  if ($detailed);
 	report_doubleSlash()  if ($doubleSlash);
@@ -179,7 +178,7 @@ sub report{
 sub report_stats{
 	# Numeric values
 	my ($hits, $maxValue) = (0) x2;
-	my ($w, $h) = @_;
+	my ($w) = @_;
 
 	foreach my $value (values %matcher) {
 		$hits = $hits + $value;
@@ -399,7 +398,7 @@ GetOptions (
 	'o=s' => \$output,
 	'j' => \$json
 	) or help();
-help() if $help; 
+help() if $help;
 print $banner if (!$output);
 die "Number of unmatched lines must be a non negative number" if (!($u == -1) && ($u < -1)); 
 $logPath = checkFilePath({
@@ -422,6 +421,7 @@ storeIgnoringFile({
 	ignoring => \@ignoring
 	}) if ($ignoringPath);
 checkRegex() if $test;
+$output = $output . ".txt" if ($output);
 
 print "Reading log file\t" if $verbose;
 open (my $log, '<:encoding(UTF-8)', $logPath) or die "Could not open log file '$logPath'";
